@@ -156,26 +156,7 @@
           </div>
         </div>
 
-        <!-- 5. Khối Lịch biểu & Việc cần làm + Đồng bộ -->
-        <div class="card schedule-card">
-          <div class="card-header">
-            <h2 class="card-title">LỊCH BIỂU &amp; VIỆC CẦN LÀM</h2>
-            <div class="header-btn-group">
-              <button type="button" class="btn btn-small" id="btn-todo-sync">Đồng bộ / Nhập</button>
-              <button type="button" class="btn btn-small" id="btn-clear-done">Xóa xong</button>
-            </div>
-          </div>
-
-          <form id="todo-form" class="todo-form">
-            <input type="text" id="todo-time" class="input-time" value="08:00" maxlength="5" placeholder="HH:MM" aria-label="Giờ">
-            <input type="text" id="todo-text" class="input-text" maxlength="100" placeholder="Thêm việc hoặc lịch hẹn..." aria-label="Nội dung công việc">
-            <button type="submit" class="btn btn-add">+ Thêm</button>
-          </form>
-
-          <ul id="todo-list" class="todo-list"></ul>
-        </div>
-
-        <!-- 6. Khối Trình đọc tin tức RSS cho E-Ink -->
+        <!-- 5. Khối Trình đọc tin tức RSS cho E-Ink -->
         <div class="card rss-card" id="rss-card">
           <div class="card-header">
             <h2 class="card-title">TIN TỨC RSS (E-INK)</h2>
@@ -283,46 +264,6 @@
         <div class="settings-options">
           <button type="button" class="btn btn-small" id="btn-setting-layout">Đổi Dọc / Ngang</button>
           <button type="button" class="btn btn-small" id="btn-setting-invert">Đảo Đen / Trắng</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Hộp thoại Đồng bộ / Nhập lịch biểu -->
-  <div id="todo-sync-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="todo-sync-title">
-    <div class="modal-box modal-box-wide">
-      <div class="modal-header">
-        <h3 id="todo-sync-title">ĐỒNG BỘ &amp; NHẬP LỊCH BIỂU NHANH</h3>
-        <button type="button" class="btn btn-small" id="btn-close-todo-sync">Đóng</button>
-      </div>
-
-      <div class="settings-group">
-        <div class="settings-label">Đồng bộ từ đường dẫn trực tuyến (GitHub Gist Raw / file .txt / .json):</div>
-        <div class="sync-url-row">
-          <input type="text" id="todo-sync-url" class="input-text sync-url-input" placeholder="https://gist.githubusercontent.com/.../raw/schedule.txt" aria-label="URL đồng bộ lịch biểu">
-        </div>
-        <div class="settings-options">
-          <button type="button" class="btn btn-small" id="btn-todo-fetch-url">Tải &amp; Thay thế</button>
-          <button type="button" class="btn btn-small" id="btn-todo-append-url">Tải &amp; Gộp thêm</button>
-        </div>
-        <div id="todo-sync-status" class="modal-status"></div>
-      </div>
-
-      <div class="settings-group">
-        <div class="settings-label">Nạp nhanh lịch mẫu (1 chạm không cần gõ phím):</div>
-        <div class="settings-options">
-          <button type="button" class="btn btn-small" id="btn-todo-preset-teach">Mẫu Ngày giảng dạy</button>
-          <button type="button" class="btn btn-small" id="btn-todo-preset-focus">Mẫu Làm việc tập trung</button>
-        </div>
-      </div>
-
-      <div class="settings-group">
-        <div class="settings-label">Nhập hoặc Xuất văn bản (Mỗi dòng: <code>HH:MM Nội dung</code> hoặc dán JSON):</div>
-        <textarea id="todo-import-text" class="sync-textarea" rows="6" placeholder="07:30 Lên lớp tiết 1-2&#10;10:00 Họp chuyên môn&#10;14:30 Soạn bài giảng"></textarea>
-        <div class="settings-options">
-          <button type="button" class="btn btn-small" id="btn-todo-import-replace">Thay toàn bộ</button>
-          <button type="button" class="btn btn-small" id="btn-todo-import-append">Thêm vào danh sách</button>
-          <button type="button" class="btn btn-small" id="btn-todo-export-fill">Xuất lịch hiện tại</button>
         </div>
       </div>
     </div>

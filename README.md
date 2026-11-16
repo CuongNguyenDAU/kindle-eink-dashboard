@@ -29,11 +29,7 @@
 - Các mốc nhanh `25p` (Pomodoro), `5p` (Nghỉ ngắn), `15p` (Nghỉ dài), `45p` (Tiết học) và nút `+5p`.
 - Chỉ cập nhật hiển thị mỗi phút một lần để bảo vệ màn hình E-Ink; khi hết giờ tự động **nháy đảo màu màn hình 3 lần** báo hiệu không tiếng ồn.
 
-### 5. Lịch biểu cá nhân & Đồng bộ nhanh
-- Quản lý danh sách việc cần làm / lịch hẹn theo giờ lưu trên `localStorage`.
-- **Đồng bộ / Nhập nhanh:** Hỗ trợ nạp mẫu lịch trình 1 chạm (Ngày giảng dạy / Làm việc tập trung), dán nhiều dòng theo dạng `HH:MM Nội dung` hoặc JSON, và tải đồng bộ trực tiếp từ URL Raw (như GitHub Gist) để khỏi phải gõ nhiều trên màn hình Kindle.
-
-### 6. Trình đọc tin tức RSS chuyên sâu cho E-Ink
+### 5. Trình đọc tin tức RSS chuyên sâu cho E-Ink
 - **9 nguồn tin tích hợp sẵn** (VnExpress Tin mới/Công nghệ/Giáo dục/Kinh doanh/Thế giới, Tuổi Trẻ, Thanh Niên, Dân Trí, Hacker News) và cho phép **tự thêm/xóa nguồn RSS tùy chỉnh**.
 - **Quản lý bài đọc:** Lọc theo **Tất cả / Chưa đọc / Đã lưu (Offline)**, lọc từ khóa, đánh dấu đã đọc và phân trang danh sách tin.
 - **Chế độ Đọc báo toàn màn hình & Đọc toàn văn kiểu Kindle:** Tự động trích xuất nội dung bài viết sạch quảng cáo, hỗ trợ **lật trang kiểu sách Kindle** (`Trang trước` / `Trang sau`) hoặc cuộn liền mạch, chỉnh cỡ chữ `A-` / `A+` và **Lưu offline** để đọc lại khi tắt Wi-Fi.
