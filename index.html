@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kindle E-Ink Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Lớp phủ khử bóng mờ (ghosting) cho màn hình mực điện tử -->
+  <div id="ghost-cleaner" aria-hidden="true"></div>
+
+  <div id="app" class="container">
+    <!-- Thanh trạng thái trên cùng -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <span class="badge-title">KINDLE DASHBOARD</span>
+        <span id="location-label" class="location-label">Đà Nẵng</span>
+      </div>
+      <div class="top-bar-right">
+        <span id="weather-sync-status" class="sync-status">Đang tải thời tiết...</span>
+      </div>
+    </header>
+
+    <!-- Khung nội dung chính (1 cột ở chế độ Dọc, 2 cột ở chế độ Ngang) -->
+    <main class="dashboard-grid">
+      <!-- CỘT TRÁI: ĐỒNG HỒ + LỊCH ÂM DƯƠNG + THỜI TIẾT -->
+      <section class="col-left">
+        <!-- Khối Đồng hồ & Ngày tháng -->
+        <div class="card clock-card">
+          <div id="clock-time" class="clock-time">--:--</div>
+          <div id="solar-date" class="solar-date">Đang tải ngày...</div>
+          <div id="lunar-date" class="lunar-date">Âm lịch: --/--</div>
+          <div id="canchi-date" class="canchi-date">Ngày --, tháng --, năm --</div>
+        </div>
+
+        <!-- Khối Thời tiết hiện tại & Dự báo -->
+        <div class="card weather-card">
+          <div class="card-header">
+            <h2 class="card-title">THỜI TIẾT</h2>
+            <button type="button" class="btn btn-small" id="btn-refresh-weather">Cập nhật</button>
+          </div>
+
+          <div class="weather-current">
+            <div id="weather-icon" class="weather-icon"></div>
+            <div class="weather-main-info">
+              <div id="weather-temp" class="weather-temp">--°C</div>
+              <div id="weather-desc" class="weather-desc">Đang kết nối...</div>
+            </div>
+          </div>
+
+          <div class="weather-metrics">
+            <div class="metric-box">
+              <span class="metric-label">Cảm giác</span>
+              <strong id="weather-feels" class="metric-value">--°C</strong>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Độ ẩm</span>
+              <strong id="weather-humidity" class="metric-value">--%</strong>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Gió</span>
+              <strong id="weather-wind" class="metric-value">-- km/h</strong>
+            </div>
+          </div>
+
+          <div id="weather-forecast" class="weather-forecast">
+            <!-- Dự báo 3 ngày tới được render bằng JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- CỘT PHẢI: LỊCH THÁNG + LỊCH BIỂU TRONG NGÀY -->
+      <section class="col-right">
+        <!-- Khối Lịch tháng -->
+        <div class="card calendar-card">
+          <div class="card-header">
+            <button type="button" class="btn btn-small" id="btn-prev-month">&#9664; Trước</button>
+            <h2 id="calendar-month-title" class="card-title">THÁNG -- / ----</h2>
+            <button type="button" class="btn btn-small" id="btn-next-month">Sau &#9654;</button>
+          </div>
+          <table class="calendar-table" id="calendar-table">
+            <thead>
+              <tr>
+                <th>T2</th>
+                <th>T3</th>
+                <th>T4</th>
+                <th>T5</th>
+                <th>T6</th>
+                <th>T7</th>
+                <th>CN</th>
+              </tr>
+            </thead>
+            <tbody id="calendar-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Khối Lịch biểu & Việc cần làm -->
+        <div class="card schedule-card">
+          <div class="card-header">
+            <h2 class="card-title">LỊCH BIỂU &amp; VIỆC CẦN LÀM</h2>
+            <button type="button" class="btn btn-small" id="btn-clear-done">Xóa mục xong</button>
+          </div>
+
+          <form id="todo-form" class="todo-form">
+            <input type="text" id="todo-time" class="input-time" value="08:00" maxlength="5" placeholder="HH:MM" aria-label="Giờ">
+            <input type="text" id="todo-text" class="input-text" maxlength="100" placeholder="Thêm việc hoặc lịch hẹn..." aria-label="Nội dung công việc">
+            <button type="submit" class="btn btn-add">+ Thêm</button>
+          </form>
+
+          <ul id="todo-list" class="todo-list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <!-- Thanh điều khiển E-Ink cố định dưới cùng -->
+    <footer class="bottom-toolbar">
+      <button type="button" class="btn toolbar-btn" id="btn-clean-ghost">Làm mới E-Ink</button>
+      <button type="button" class="btn toolbar-btn" id="btn-city-modal">Thành phố</button>
+      <button type="button" class="btn toolbar-btn" id="btn-toggle-layout">Ngang / Dọc</button>
+      <button type="button" class="btn toolbar-btn" id="btn-toggle-invert">Đen / Trắng</button>
+      <button type="button" class="btn toolbar-btn" id="btn-help-modal">Mẹo ~ds</button>
+    </footer>
+  </div>
+
+  <!-- Hộp thoại chọn thành phố -->
+  <div id="city-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="city-modal-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="city-modal-title">CHỌN THÀNH PHỐ THỜI TIẾT</h3>
+        <button type="button" class="btn btn-small" id="btn-close-city">Đóng</button>
+      </div>
+      <div id="city-list" class="city-list"></div>
+    </div>
+  </div>
+
+  <!-- Hộp thoại hướng dẫn giữ màn hình Kindle luôn bật (~ds) -->
+  <div id="help-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="help-modal-title">GIỮ KINDLE KHÔNG TẮT MÀN HÌNH</h3>
+        <button type="button" class="btn btn-small" id="btn-close-help">Đóng</button>
+      </div>
+      <div class="help-content">
+        <p><strong>Bước 1:</strong> Ra màn hình chính (Home) của Kindle, chạm vào thanh <strong>Tìm kiếm (Search)</strong> ở phía trên.</p>
+        <p><strong>Bước 2:</strong> Nhập chính xác lệnh sau rồi nhấn Enter:</p>
+        <div class="code-box">~ds</div>
+        <p><em>(Viết tắt của Disable Screensaver — tắt chế độ tự khóa màn hình).</em></p>
+        <p><strong>Bước 3:</strong> Mở lại trình duyệt web và giữ trang Dashboard này mở liên tục.</p>
+        <p><strong>Lưu ý:</strong> Khi muốn Kindle tự ngủ lại như bình thường, chỉ cần giữ nút nguồn để <strong>Khởi động lại (Restart)</strong> máy.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

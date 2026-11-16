@@ -1,0 +1,723 @@
+/* ==========================================================================
+   Kindle E-Ink Dashboard - Stylesheet tối ưu cho màn hình mực điện tử
+   Nguyên tắc: Tương phản tuyệt đối (#000000 / #FFFFFF), không shadow/gradient,
+   tắt mọi hiệu ứng động (transition/animation), nút bấm tối thiểu 44x44px.
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-transition: none !important;
+  transition: none !important;
+  -webkit-animation: none !important;
+  animation: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+html,
+body {
+  background-color: #ffffff;
+  color: #000000;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  line-height: 1.4;
+  width: 100%;
+  min-height: 100%;
+  -webkit-font-smoothing: none;
+}
+
+/* Chế độ đảo màu (Ban đêm / Nền đen chữ trắng) */
+body.invert-mode {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* Lớp phủ khử bóng mờ (ghosting) toàn màn hình */
+#ghost-cleaner {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: #000000;
+  z-index: 9999;
+}
+
+body.invert-mode #ghost-cleaner {
+  background-color: #ffffff;
+}
+
+/* Khung bao tổng */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 14px 80px 14px;
+}
+
+/* Thanh trạng thái trên cùng */
+.top-bar {
+  display: table;
+  width: 100%;
+  border-bottom: 3px solid #000000;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+body.invert-mode .top-bar {
+  border-bottom-color: #ffffff;
+}
+
+.top-bar-left {
+  display: table-cell;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.top-bar-right {
+  display: table-cell;
+  vertical-align: middle;
+  text-align: right;
+}
+
+.badge-title {
+  display: inline-block;
+  background-color: #000000;
+  color: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  padding: 4px 8px;
+  margin-right: 8px;
+}
+
+body.invert-mode .badge-title {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.location-label {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.sync-status {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* Bố cục Dọc (mặc định) và Ngang (.landscape-mode) */
+.dashboard-grid {
+  display: block;
+  width: 100%;
+}
+
+.col-left,
+.col-right {
+  display: block;
+  width: 100%;
+}
+
+body.landscape-mode .dashboard-grid {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+body.landscape-mode .col-left {
+  display: table-cell;
+  width: 46%;
+  vertical-align: top;
+  padding-right: 12px;
+}
+
+body.landscape-mode .col-right {
+  display: table-cell;
+  width: 54%;
+  vertical-align: top;
+}
+
+/* Thẻ nội dung (Card) */
+.card {
+  border: 3px solid #000000;
+  background-color: #ffffff;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+body.invert-mode .card {
+  border-color: #ffffff;
+  background-color: #000000;
+}
+
+.card-header {
+  display: table;
+  width: 100%;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+body.invert-mode .card-header {
+  border-bottom-color: #ffffff;
+}
+
+.card-title {
+  display: table-cell;
+  vertical-align: middle;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.card-header .btn-small {
+  float: right;
+}
+
+/* Nút bấm chuẩn E-Ink (tối thiểu 44x44px) */
+.btn {
+  display: inline-block;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 14px;
+  background-color: #ffffff;
+  color: #000000;
+  border: 2px solid #000000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  font-weight: bold;
+  text-align: center;
+  cursor: pointer;
+  line-height: 24px;
+}
+
+.btn:active {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+body.invert-mode .btn {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
+body.invert-mode .btn:active {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.btn-small {
+  min-height: 44px;
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+/* 1. ĐỒNG HỒ & ÂM DƯƠNG LỊCH */
+.clock-card {
+  text-align: center;
+  padding: 14px 10px;
+}
+
+.clock-time {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 74px;
+  font-weight: bold;
+  line-height: 1.05;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+
+body.landscape-mode .clock-time {
+  font-size: 64px;
+}
+
+.solar-date {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.lunar-date {
+  display: inline-block;
+  border: 2px solid #000000;
+  padding: 4px 12px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+body.invert-mode .lunar-date {
+  border-color: #ffffff;
+}
+
+.canchi-date {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* 2. THỜI TIẾT */
+.weather-current {
+  display: table;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.weather-icon {
+  display: table-cell;
+  width: 78px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.weather-icon svg {
+  width: 64px;
+  height: 64px;
+  stroke: #000000;
+  fill: none;
+}
+
+body.invert-mode .weather-icon svg {
+  stroke: #ffffff;
+}
+
+.weather-main-info {
+  display: table-cell;
+  vertical-align: middle;
+  padding-left: 10px;
+}
+
+.weather-temp {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 42px;
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.weather-desc {
+  font-size: 17px;
+  font-weight: bold;
+}
+
+.weather-metrics {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  border-top: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+  margin-bottom: 10px;
+}
+
+body.invert-mode .weather-metrics {
+  border-color: #ffffff;
+}
+
+.metric-box {
+  display: table-cell;
+  text-align: center;
+  padding: 8px 4px;
+  border-right: 2px solid #000000;
+}
+
+.metric-box:last-child {
+  border-right: none;
+}
+
+body.invert-mode .metric-box {
+  border-right-color: #ffffff;
+}
+
+.metric-label {
+  display: block;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.weather-forecast {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.forecast-item {
+  display: table-cell;
+  text-align: center;
+  padding: 6px 4px;
+  border-right: 2px dashed #000000;
+  vertical-align: top;
+}
+
+.forecast-item:last-child {
+  border-right: none;
+}
+
+body.invert-mode .forecast-item {
+  border-right-color: #ffffff;
+}
+
+.forecast-day {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.forecast-icon svg {
+  width: 32px;
+  height: 32px;
+  stroke: #000000;
+  fill: none;
+}
+
+body.invert-mode .forecast-icon svg {
+  stroke: #ffffff;
+}
+
+.forecast-range {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+/* 3. LỊCH THÁNG */
+.calendar-card .card-header {
+  text-align: center;
+}
+
+.calendar-card .card-title {
+  display: inline-block;
+  padding: 8px 8px;
+}
+
+#btn-prev-month {
+  float: left;
+}
+
+#btn-next-month {
+  float: right;
+}
+
+.calendar-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.calendar-table th,
+.calendar-table td {
+  border: 2px solid #000000;
+  text-align: center;
+  height: 38px;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+body.invert-mode .calendar-table th,
+body.invert-mode .calendar-table td {
+  border-color: #ffffff;
+}
+
+.calendar-table th {
+  background-color: #000000;
+  color: #ffffff;
+  height: 32px;
+  font-size: 13px;
+}
+
+body.invert-mode .calendar-table th {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.calendar-table td.day-empty {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #ffffff,
+    #ffffff 4px,
+    #000000 4px,
+    #000000 5px
+  );
+}
+
+body.invert-mode .calendar-table td.day-empty {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #000000,
+    #000000 4px,
+    #ffffff 4px,
+    #ffffff 5px
+  );
+}
+
+.calendar-table td.day-today {
+  background-color: #000000;
+  color: #ffffff;
+  font-size: 17px;
+  text-decoration: underline;
+}
+
+body.invert-mode .calendar-table td.day-today {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* 4. LỊCH BIỂU & VIỆC CẦN LÀM */
+.todo-form {
+  display: table;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.todo-form > * {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.input-time {
+  width: 72px;
+  height: 44px;
+  border: 2px solid #000000;
+  background-color: #ffffff;
+  color: #000000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  font-weight: bold;
+  text-align: center;
+  padding: 4px;
+}
+
+.input-text {
+  width: 100%;
+  height: 44px;
+  border: 2px solid #000000;
+  border-left: none;
+  border-right: none;
+  background-color: #ffffff;
+  color: #000000;
+  font-family: Georgia, serif;
+  font-size: 16px;
+  padding: 4px 10px;
+}
+
+body.invert-mode .input-time,
+body.invert-mode .input-text {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
+.btn-add {
+  width: 88px;
+  white-space: nowrap;
+}
+
+.todo-list {
+  list-style: none;
+}
+
+.todo-item {
+  display: table;
+  width: 100%;
+  border-bottom: 2px solid #000000;
+  padding: 6px 0;
+}
+
+.todo-item:last-child {
+  border-bottom: none;
+}
+
+body.invert-mode .todo-item {
+  border-bottom-color: #ffffff;
+}
+
+.todo-toggle {
+  display: table-cell;
+  vertical-align: middle;
+  cursor: pointer;
+  padding: 6px 8px 6px 2px;
+  font-size: 16px;
+}
+
+.todo-check {
+  display: inline-block;
+  font-family: "Courier New", Courier, monospace;
+  font-weight: bold;
+  font-size: 17px;
+  margin-right: 6px;
+}
+
+.todo-time-badge {
+  display: inline-block;
+  border: 2px solid #000000;
+  padding: 1px 6px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  margin-right: 6px;
+}
+
+body.invert-mode .todo-time-badge {
+  border-color: #ffffff;
+}
+
+.todo-item.is-done .todo-label {
+  text-decoration: line-through;
+}
+
+.todo-del-wrap {
+  display: table-cell;
+  width: 48px;
+  vertical-align: middle;
+  text-align: right;
+}
+
+.btn-del {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 8px;
+  font-size: 18px;
+}
+
+.todo-empty {
+  text-align: center;
+  padding: 16px 8px;
+  font-style: italic;
+}
+
+/* 5. THANH ĐIỀU KHIỂN DƯỚI CÙNG */
+.bottom-toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ffffff;
+  border-top: 3px solid #000000;
+  padding: 6px 8px;
+  text-align: center;
+  z-index: 100;
+}
+
+body.invert-mode .bottom-toolbar {
+  background-color: #000000;
+  border-top-color: #ffffff;
+}
+
+.toolbar-btn {
+  margin: 2px 3px;
+  font-size: 14px;
+  padding: 6px 10px;
+}
+
+/* 6. HỘP THOẠI (MODAL) */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: #ffffff;
+  z-index: 500;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+body.invert-mode .modal-backdrop {
+  background-color: #000000;
+}
+
+.modal-backdrop.is-open {
+  display: block;
+}
+
+.modal-box {
+  max-width: 600px;
+  margin: 12px auto;
+  border: 4px solid #000000;
+  background-color: #ffffff;
+  padding: 14px;
+}
+
+body.invert-mode .modal-box {
+  border-color: #ffffff;
+  background-color: #000000;
+}
+
+.modal-header {
+  display: table;
+  width: 100%;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+body.invert-mode .modal-header {
+  border-bottom-color: #ffffff;
+}
+
+.modal-header h3 {
+  display: table-cell;
+  vertical-align: middle;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 17px;
+  font-weight: bold;
+}
+
+.modal-header .btn-small {
+  float: right;
+}
+
+.city-list .city-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 8px;
+}
+
+.city-list .city-btn.is-active {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+body.invert-mode .city-list .city-btn.is-active {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.help-content p {
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.code-box {
+  border: 3px solid #000000;
+  padding: 10px;
+  text-align: center;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 28px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  margin: 10px 0;
+}
+
+body.invert-mode .code-box {
+  border-color: #ffffff;
+}
