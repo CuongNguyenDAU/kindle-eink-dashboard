@@ -15,35 +15,97 @@
     { id: "nhatrang", name: "Nha Trang", lat: 12.2388, lon: 109.1967 }
   ];
 
+  var DEFAULT_RSS_FEEDS = [
+    { id: "vne-new", name: "VnExpress Mới", url: "https://vnexpress.net/rss/tin-moi-nhat.rss", builtin: true },
+    { id: "vne-tech", name: "VnE Công nghệ", url: "https://vnexpress.net/rss/khoa-hoc-cong-nghe.rss", builtin: true },
+    { id: "vne-edu", name: "VnE Giáo dục", url: "https://vnexpress.net/rss/giao-duc.rss", builtin: true },
+    { id: "vne-biz", name: "VnE Kinh doanh", url: "https://vnexpress.net/rss/kinh-doanh.rss", builtin: true },
+    { id: "vne-world", name: "VnE Thế giới", url: "https://vnexpress.net/rss/the-gioi.rss", builtin: true },
+    { id: "tt-new", name: "Tuổi Trẻ", url: "https://tuoitre.vn/rss/tin-moi-nhat.rss", builtin: true },
+    { id: "tn-new", name: "Thanh Niên", url: "https://thanhnien.vn/rss/thoi-su.rss", builtin: true },
+    { id: "dt-new", name: "Dân Trí", url: "https://dantri.com.vn/rss/su-kien.rss", builtin: true },
+    { id: "hn-front", name: "Hacker News", url: "https://hnrss.org/frontpage", builtin: true }
+  ];
+
   var STORAGE_KEYS = {
     CITY: "kindle_dash_city_v1",
     WEATHER_CACHE: "kindle_dash_weather_v1",
+    AQI_CACHE: "kindle_dash_aqi_v1",
     TODOS: "kindle_dash_todos_v1",
+    TODO_SYNC_URL: "kindle_dash_todo_sync_url_v1",
     INVERT: "kindle_dash_invert_v1",
-    LANDSCAPE: "kindle_dash_landscape_v1"
+    LANDSCAPE: "kindle_dash_landscape_v1",
+    ZEN_MODE: "kindle_dash_zen_v1",
+    FONT_SCALE: "kindle_dash_font_scale_v1",
+    AUTO_CLEAN: "kindle_dash_auto_clean_v1",
+    AUTO_NIGHT: "kindle_dash_auto_night_v1",
+    RSS_CUSTOM: "kindle_dash_rss_custom_v1",
+    RSS_ACTIVE: "kindle_dash_rss_active_v1",
+    RSS_CACHE: "kindle_dash_rss_cache_v1",
+    RSS_READ: "kindle_dash_rss_read_v1",
+    RSS_SAVED: "kindle_dash_rss_saved_v1",
+    RSS_PAGE_MODE: "kindle_dash_rss_pagemode_v1",
+    RSS_ART_FONT: "kindle_dash_rss_artfont_v1"
   };
 
   var WEEKDAYS_VI = [
-    "Chủ Nhật",
-    "Thứ Hai",
-    "Thứ Ba",
-    "Thứ Tư",
-    "Thứ Năm",
-    "Thứ Sáu",
-    "Thứ Bảy"
+    "Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"
   ];
-
   var WEEKDAYS_SHORT = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-
   var CAN = ["Giáp", "Ất", "Bính", "Đinh", "Mậu", "Kỷ", "Canh", "Tân", "Nhâm", "Quý"];
   var CHI = ["Tý", "Sửu", "Dần", "Mão", "Thìn", "Tỵ", "Ngọ", "Mùi", "Thân", "Dậu", "Tuất", "Hợi"];
 
+  var SOLAR_TERMS = [
+    "Xuân Phân", "Thanh Minh", "Cốc Vũ", "Lập Hạ", "Tiểu Mãn", "Mang Chủng",
+    "Hạ Chí", "Tiểu Thử", "Đại Thử", "Lập Thu", "Xử Thử", "Bạch Lộ",
+    "Thu Phân", "Hàn Lộ", "Sương Giáng", "Lập Đông", "Tiểu Tuyết", "Đại Tuyết",
+    "Đông Chí", "Tiểu Hàn", "Đại Hàn", "Lập Xuân", "Vũ Thủy", "Kinh Trập"
+  ];
+
+  var FONT_SCALES = ["sm", "md", "lg", "xl"];
+
+  var nowInit = new Date();
   var state = {
     cityId: "danang",
-    viewYear: new Date().getFullYear(),
-    viewMonth: new Date().getMonth(),
+    viewYear: nowInit.getFullYear(),
+    viewMonth: nowInit.getMonth(),
+    selectedYear: nowInit.getFullYear(),
+    selectedMonth: nowInit.getMonth(),
+    selectedDay: nowInit.getDate(),
     todos: [],
-    lastClockDayKey: ""
+    lastClockDayKey: "",
+    lastAutoNightState: null,
+    fontScale: "md",
+    autoCleanMinutes: 0,
+    autoCleanTimerId: null,
+    autoNightEnabled: false,
+    zenMode: false,
+    rssFullscreen: false,
+    pomo: {
+      presetMinutes: 25,
+      label: "Pomodoro",
+      remainingMinutes: 25,
+      running: false,
+      endTimeMs: 0,
+      timerId: null
+    },
+    rss: {
+      customFeeds: [],
+      activeFeedId: "vne-new",
+      filterMode: "all",
+      searchQuery: "",
+      currentPage: 1,
+      cache: {},
+      readMap: {},
+      savedList: [],
+      loadingFeed: false,
+      filteredItems: [],
+      activeArticle: null,
+      articleFont: "md",
+      articleMode: "page",
+      articlePages: [],
+      articlePageIndex: 0
+    }
   };
 
   /* ========================================================================
@@ -53,13 +115,34 @@
     return num < 10 ? "0" + num : String(num);
   }
 
+  function trimStr(str) {
+    return String(str || "").replace(/^\s+|\s+$/g, "");
+  }
+
   function escapeHtml(str) {
-    return String(str)
+    return String(str || "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  function decodeEntities(str) {
+    var txt = document.createElement("textarea");
+    txt.innerHTML = String(str || "");
+    return txt.value;
+  }
+
+  function stripHtml(str) {
+    var clean = String(str || "")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, " ");
+    clean = decodeEntities(clean);
+    return clean.replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n").replace(/^\s+|\s+$/g, "");
   }
 
   function storageGet(key, fallback) {
@@ -75,7 +158,20 @@
     try {
       window.localStorage.setItem(key, val);
     } catch (e) {
-      // Bỏ qua nếu trình duyệt chặn localStorage
+      // Bỏ qua nếu bộ nhớ đầy hoặc bị chặn
+    }
+  }
+
+  function storageGetJson(key, fallback) {
+    var raw = storageGet(key, "");
+    if (!raw) {
+      return fallback;
+    }
+    try {
+      var parsed = JSON.parse(raw);
+      return parsed === null ? fallback : parsed;
+    } catch (e) {
+      return fallback;
     }
   }
 
@@ -84,12 +180,15 @@
   }
 
   function addClass(el, cls) {
-    if (!hasClass(el, cls)) {
+    if (el && !hasClass(el, cls)) {
       el.className = el.className ? el.className + " " + cls : cls;
     }
   }
 
   function removeClass(el, cls) {
+    if (!el) {
+      return;
+    }
     var updated = (" " + el.className + " ").replace(" " + cls + " ", " ");
     el.className = updated.replace(/^\s+|\s+$/g, "");
   }
@@ -113,8 +212,18 @@
     return CITIES[0];
   }
 
+  function indexInArray(arr, val) {
+    var i;
+    for (i = 0; i < arr.length; i++) {
+      if (arr[i] === val) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   /* ========================================================================
-     THUẬT TOÁN ÂM LỊCH VIỆT NAM (MÚI GIỜ UTC+7 - HỒ NGỌC ĐỨC)
+     THUẬT TOÁN ÂM LỊCH, 24 TIẾT KHÍ & NGÀY LỄ VIỆT NAM (UTC+7)
      ======================================================================== */
   function INT(d) {
     return Math.floor(d);
@@ -262,14 +371,76 @@
     };
   }
 
+  function getSolarTermInfo(dd, mm, yy, timeZone) {
+    var jd = jdFromDate(dd, mm, yy);
+    var step = Math.PI / 12;
+    var idx0 = INT(sunLongitude(jd - 0.5 - timeZone / 24) / step) % 24;
+    var idx1 = INT(sunLongitude(jd + 0.5 - timeZone / 24) / step) % 24;
+    if (idx1 !== idx0) {
+      return { name: SOLAR_TERMS[idx1], isStart: true };
+    }
+    return { name: SOLAR_TERMS[idx0], isStart: false };
+  }
+
+  function getHolidaysForDate(dd, mm, lunar) {
+    var list = [];
+    var sKey = dd + "/" + mm;
+    if (sKey === "1/1") { list.push("Tết Dương lịch"); }
+    if (sKey === "14/2") { list.push("Lễ Tình nhân"); }
+    if (sKey === "8/3") { list.push("Quốc tế Phụ nữ"); }
+    if (sKey === "30/4") { list.push("Giải phóng miền Nam"); }
+    if (sKey === "1/5") { list.push("Quốc tế Lao động"); }
+    if (sKey === "1/6") { list.push("Quốc tế Thiếu nhi"); }
+    if (sKey === "2/9") { list.push("Quốc khánh Việt Nam"); }
+    if (sKey === "20/10") { list.push("Phụ nữ Việt Nam"); }
+    if (sKey === "20/11") { list.push("Nhà giáo Việt Nam"); }
+    if (sKey === "22/12") { list.push("Thành lập QĐND VN"); }
+    if (sKey === "25/12") { list.push("Lễ Giáng Sinh"); }
+
+    if (lunar.leap === 0) {
+      var lKey = lunar.day + "/" + lunar.month;
+      if (lKey === "1/1") { list.push("Mùng 1 Tết Nguyên Đán"); }
+      if (lKey === "2/1") { list.push("Mùng 2 Tết Nguyên Đán"); }
+      if (lKey === "3/1") { list.push("Mùng 3 Tết Nguyên Đán"); }
+      if (lKey === "15/1") { list.push("Tết Nguyên Tiêu"); }
+      if (lKey === "3/3") { list.push("Tết Hàn Thực"); }
+      if (lKey === "10/3") { list.push("Giỗ Tổ Hùng Vương"); }
+      if (lKey === "15/4") { list.push("Lễ Phật Đản"); }
+      if (lKey === "5/5") { list.push("Tết Đoan Ngọ"); }
+      if (lKey === "15/7") { list.push("Lễ Vu Lan"); }
+      if (lKey === "15/8") { list.push("Tết Trung Thu"); }
+      if (lKey === "23/12") { list.push("Ông Công Ông Táo"); }
+    }
+    return list;
+  }
+
   /* ========================================================================
-     1. ĐỒNG HỒ & NGÀY ÂM DƯƠNG
+     1. ĐỒNG HỒ, LỊCH ÂM DƯƠNG & AUTO NIGHT MODE
      ======================================================================== */
+  function checkAutoNightMode(now) {
+    if (!state.autoNightEnabled) {
+      return;
+    }
+    var h = now.getHours();
+    var shouldInvert = (h >= 19 || h < 6);
+    if (state.lastAutoNightState !== shouldInvert) {
+      state.lastAutoNightState = shouldInvert;
+      if (shouldInvert) {
+        addClass(document.body, "invert-mode");
+      } else {
+        removeClass(document.body, "invert-mode");
+      }
+      storageSet(STORAGE_KEYS.INVERT, shouldInvert ? "1" : "0");
+    }
+  }
+
   function updateClock() {
     var now = new Date();
     var hours = pad2(now.getHours());
     var minutes = pad2(now.getMinutes());
     document.getElementById("clock-time").textContent = hours + ":" + minutes;
+
+    checkAutoNightMode(now);
 
     var dd = now.getDate();
     var mm = now.getMonth() + 1;
@@ -291,34 +462,39 @@
 
       document.getElementById("lunar-date").textContent =
         "Âm lịch: " + pad2(lunar.day) + " tháng " + monthText + " năm " + canChi.yearName;
-
       document.getElementById("canchi-date").textContent =
         "Ngày " + canChi.dayName + " · Tháng " + canChi.monthName;
 
+      var term = getSolarTermInfo(dd, mm, yy, 7);
+      document.getElementById("solar-term-badge").textContent =
+        (term.isStart ? "Đầu tiết: " : "Tiết khí: ") + term.name;
+
+      var holidays = getHolidaysForDate(dd, mm, lunar);
+      var banner = document.getElementById("holiday-banner");
+      if (holidays.length > 0) {
+        banner.textContent = "Hôm nay: " + holidays.join(" · ");
+        addClass(banner, "is-visible");
+      } else {
+        banner.textContent = "";
+        removeClass(banner, "is-visible");
+      }
+
       renderCalendar();
+      renderSelectedDayDetail();
     }
 
-    // Lên lịch vẽ lại đúng vào giây 00 của phút kế tiếp để tiết kiệm pin E-Ink
     var msUntilNextMinute = (60 - now.getSeconds()) * 1000 + 60;
     window.setTimeout(updateClock, msUntilNextMinute);
   }
 
   /* ========================================================================
-     2. THỜI TIẾT (OPEN-METEO API QUA XMLHTTPREQUEST)
+     2. THỜI TIẾT, KHÔNG KHÍ (AQI/UV) & BIỂU ĐỒ 12 GIỜ (OPEN-METEO)
      ======================================================================== */
   function getWeatherMeta(code) {
-    if (code === 0) {
-      return { label: "Trời quang nắng", icon: "sun" };
-    }
-    if (code === 1 || code === 2) {
-      return { label: "Ít mây", icon: "partly" };
-    }
-    if (code === 3) {
-      return { label: "Nhiều mây", icon: "cloud" };
-    }
-    if (code === 45 || code === 48) {
-      return { label: "Có sương mù", icon: "fog" };
-    }
+    if (code === 0) { return { label: "Trời quang nắng", icon: "sun" }; }
+    if (code === 1 || code === 2) { return { label: "Ít mây", icon: "partly" }; }
+    if (code === 3) { return { label: "Nhiều mây", icon: "cloud" }; }
+    if (code === 45 || code === 48) { return { label: "Có sương mù", icon: "fog" }; }
     if (code === 51 || code === 53 || code === 55 || code === 56 || code === 57) {
       return { label: "Mưa phùn", icon: "rain" };
     }
@@ -331,9 +507,7 @@
     if (code === 71 || code === 73 || code === 75 || code === 77 || code === 85 || code === 86) {
       return { label: "Tuyết / Mưa lạnh", icon: "cloud" };
     }
-    if (code >= 95) {
-      return { label: "Có dông sét", icon: "storm" };
-    }
+    if (code >= 95) { return { label: "Có dông sét", icon: "storm" }; }
     return { label: "Nhiều mây", icon: "cloud" };
   }
 
@@ -354,7 +528,6 @@
         '<line x1="19" y1="45" x2="13" y2="51"></line>' +
         close;
     }
-
     if (iconType === "partly") {
       return open +
         '<circle cx="24" cy="22" r="9"></circle>' +
@@ -365,7 +538,6 @@
         '<path d="M20 48h26a10 10 0 0 0 0-20 13 13 0 0 0-25-2 9 9 0 0 0-1 22z"></path>' +
         close;
     }
-
     if (iconType === "fog") {
       return open +
         '<path d="M16 34h32a9 9 0 0 0 0-18 12 12 0 0 0-23-2 8 8 0 0 0-9 20z"></path>' +
@@ -373,7 +545,6 @@
         '<line x1="16" y1="53" x2="48" y2="53"></line>' +
         close;
     }
-
     if (iconType === "rain") {
       return open +
         '<path d="M16 38h32a9 9 0 0 0 0-18 12 12 0 0 0-23-2 8 8 0 0 0-9 20z"></path>' +
@@ -382,7 +553,6 @@
         '<line x1="46" y1="46" x2="42" y2="56"></line>' +
         close;
     }
-
     if (iconType === "heavy-rain") {
       return open +
         '<path d="M16 36h32a9 9 0 0 0 0-18 12 12 0 0 0-23-2 8 8 0 0 0-9 18z"></path>' +
@@ -392,14 +562,12 @@
         '<line x1="48" y1="43" x2="43" y2="57"></line>' +
         close;
     }
-
     if (iconType === "storm") {
       return open +
         '<path d="M16 36h32a9 9 0 0 0 0-18 12 12 0 0 0-23-2 8 8 0 0 0-9 18z"></path>' +
         '<polyline points="35 38 26 50 34 50 28 60"></polyline>' +
         close;
     }
-
     return open +
       '<path d="M16 44h32a10 10 0 0 0 0-20 13 13 0 0 0-25-2 9 9 0 0 0-7 22z"></path>' +
       close;
@@ -417,6 +585,88 @@
     return WEEKDAYS_SHORT[d.getDay()] + " (" + parts[2] + "/" + parts[1] + ")";
   }
 
+  function extractTimePart(isoDateTime) {
+    if (!isoDateTime) { return "--:--"; }
+    var idx = isoDateTime.indexOf("T");
+    return idx !== -1 ? isoDateTime.slice(idx + 1, idx + 6) : isoDateTime;
+  }
+
+  function getUvLabel(uv) {
+    if (uv < 3) { return "Thấp"; }
+    if (uv < 6) { return "Vừa"; }
+    if (uv < 8) { return "Cao"; }
+    return "Rất cao";
+  }
+
+  function getAqiLabel(aqi) {
+    if (aqi <= 50) { return "Tốt"; }
+    if (aqi <= 100) { return "TB"; }
+    if (aqi <= 150) { return "Kém"; }
+    return "Xấu";
+  }
+
+  function renderHourlyChart(hourly) {
+    var container = document.getElementById("weather-hourly-chart");
+    if (!hourly || !hourly.time || !hourly.temperature_2m || hourly.time.length === 0) {
+      container.innerHTML = '<div class="chart-empty">Chưa có dữ liệu theo giờ.</div>';
+      return;
+    }
+
+    var now = new Date();
+    var targetKey = now.getFullYear() + "-" + pad2(now.getMonth() + 1) + "-" + pad2(now.getDate()) + "T" + pad2(now.getHours()) + ":00";
+    var startIdx = 0;
+    var i;
+    for (i = 0; i < hourly.time.length; i++) {
+      if (hourly.time[i] >= targetKey) {
+        startIdx = i;
+        break;
+      }
+    }
+
+    var slots = [];
+    for (i = 0; i < 6; i++) {
+      var idx = startIdx + i * 2;
+      if (idx < hourly.time.length) {
+        var rainP = (hourly.precipitation_probability && hourly.precipitation_probability[idx] !== undefined)
+          ? Math.round(hourly.precipitation_probability[idx])
+          : 0;
+        slots.push({
+          hour: hourly.time[idx].slice(11, 13) + "h",
+          temp: Math.round(hourly.temperature_2m[idx]),
+          rain: rainP
+        });
+      }
+    }
+
+    if (slots.length === 0) {
+      container.innerHTML = '<div class="chart-empty">Không có dữ liệu dự báo giờ.</div>';
+      return;
+    }
+
+    var minT = slots[0].temp;
+    var maxT = slots[0].temp;
+    for (i = 1; i < slots.length; i++) {
+      if (slots[i].temp < minT) { minT = slots[i].temp; }
+      if (slots[i].temp > maxT) { maxT = slots[i].temp; }
+    }
+    var span = maxT - minT;
+    if (span < 1) { span = 1; }
+
+    var html = "";
+    for (i = 0; i < slots.length; i++) {
+      var pct = 24 + Math.round(((slots[i].temp - minT) / span) * 70);
+      html += '<div class="chart-col">' +
+        '<div class="chart-temp">' + slots[i].temp + "°</div>" +
+        '<div class="chart-bar-track">' +
+          '<div class="chart-bar-fill" style="height:' + pct + '%;"></div>' +
+        "</div>" +
+        '<div class="chart-rain">' + slots[i].rain + "%</div>" +
+        '<div class="chart-hour">' + escapeHtml(slots[i].hour) + "</div>" +
+      "</div>";
+    }
+    container.innerHTML = html;
+  }
+
   function renderWeather(data, isOfflineCache, cacheTimeStr) {
     if (!data || !data.current) {
       return;
@@ -431,6 +681,26 @@
     document.getElementById("weather-humidity").textContent = Math.round(cur.relative_humidity_2m) + "%";
     document.getElementById("weather-wind").textContent = Math.round(cur.wind_speed_10m) + " km/h";
 
+    if (cur.uv_index !== undefined && cur.uv_index !== null) {
+      var uvVal = Math.round(cur.uv_index * 10) / 10;
+      document.getElementById("weather-uv").textContent = uvVal + " (" + getUvLabel(uvVal) + ")";
+    } else {
+      document.getElementById("weather-uv").textContent = "--";
+    }
+
+    if (data.daily) {
+      var rainProb = (data.daily.precipitation_probability_max && data.daily.precipitation_probability_max.length > 0)
+        ? Math.round(data.daily.precipitation_probability_max[0]) + "%"
+        : "--%";
+      document.getElementById("weather-rain-prob").textContent = rainProb;
+
+      var sunrise = (data.daily.sunrise && data.daily.sunrise.length > 0) ? extractTimePart(data.daily.sunrise[0]) : "--";
+      var sunset = (data.daily.sunset && data.daily.sunset.length > 0) ? extractTimePart(data.daily.sunset[0]) : "--";
+      document.getElementById("weather-sun").textContent = sunrise + " / " + sunset;
+    }
+
+    renderHourlyChart(data.hourly);
+
     var forecastEl = document.getElementById("weather-forecast");
     var html = "";
     if (data.daily && data.daily.time && data.daily.time.length > 1) {
@@ -440,10 +710,14 @@
         var dayMeta = getWeatherMeta(data.daily.weather_code[i]);
         var tMin = Math.round(data.daily.temperature_2m_min[i]);
         var tMax = Math.round(data.daily.temperature_2m_max[i]);
+        var dayRain = (data.daily.precipitation_probability_max && data.daily.precipitation_probability_max[i] !== undefined)
+          ? Math.round(data.daily.precipitation_probability_max[i]) + "% mưa"
+          : "";
         html += '<div class="forecast-item">' +
           '<div class="forecast-day">' + escapeHtml(formatShortDateLabel(data.daily.time[i], i)) + "</div>" +
           '<div class="forecast-icon">' + getWeatherSvg(dayMeta.icon) + "</div>" +
           '<div class="forecast-range">' + tMin + "° - " + tMax + "°</div>" +
+          (dayRain ? '<div class="forecast-extra">' + dayRain + "</div>" : "") +
           "</div>";
       }
     }
@@ -457,20 +731,57 @@
     }
   }
 
-  function loadCachedWeatherForCity(cityId) {
-    var raw = storageGet(STORAGE_KEYS.WEATHER_CACHE, "");
-    if (!raw) {
-      return null;
+  function renderAirQuality(aqiData) {
+    var el = document.getElementById("weather-aqi");
+    if (!aqiData || !aqiData.current) {
+      el.textContent = "--";
+      return;
     }
-    try {
-      var parsed = JSON.parse(raw);
-      if (parsed && parsed.cityId === cityId && parsed.data) {
-        return parsed;
-      }
-    } catch (e) {
-      return null;
+    var aqi = aqiData.current.us_aqi !== undefined ? Math.round(aqiData.current.us_aqi) : null;
+    var pm25 = aqiData.current.pm2_5 !== undefined ? Math.round(aqiData.current.pm2_5) : null;
+    if (aqi !== null && pm25 !== null) {
+      el.textContent = aqi + " (" + getAqiLabel(aqi) + ") · " + pm25 + "µg";
+    } else if (aqi !== null) {
+      el.textContent = aqi + " (" + getAqiLabel(aqi) + ")";
+    } else {
+      el.textContent = "--";
+    }
+  }
+
+  function loadCachedForCity(storageKey, cityId) {
+    var parsed = storageGetJson(storageKey, null);
+    if (parsed && parsed.cityId === cityId && parsed.data) {
+      return parsed;
     }
     return null;
+  }
+
+  function fetchAirQuality(city) {
+    var url = "https://air-quality-api.open-meteo.com/v1/air-quality" +
+      "?latitude=" + city.lat +
+      "&longitude=" + city.lon +
+      "&current=us_aqi,pm2_5&timezone=Asia%2FHo_Chi_Minh";
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.timeout = 10000;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var aqiData = JSON.parse(xhr.responseText);
+          storageSet(STORAGE_KEYS.AQI_CACHE, JSON.stringify({
+            cityId: city.id,
+            data: aqiData
+          }));
+          renderAirQuality(aqiData);
+          return;
+        } catch (e) { /* fallback */ }
+      }
+      var cached = loadCachedForCity(STORAGE_KEYS.AQI_CACHE, city.id);
+      if (cached) { renderAirQuality(cached.data); }
+    };
+    try { xhr.send(); } catch (e) { /* ignore */ }
   }
 
   function fetchWeather() {
@@ -481,8 +792,9 @@
     var url = "https://api.open-meteo.com/v1/forecast" +
       "?latitude=" + city.lat +
       "&longitude=" + city.lon +
-      "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m" +
-      "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
+      "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,uv_index" +
+      "&hourly=temperature_2m,precipitation_probability,weather_code" +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_probability_max" +
       "&timezone=Asia%2FHo_Chi_Minh&forecast_days=4";
 
     var xhr = new XMLHttpRequest();
@@ -490,9 +802,7 @@
     xhr.timeout = 12000;
 
     xhr.onreadystatechange = function () {
-      if (xhr.readyState !== 4) {
-        return;
-      }
+      if (xhr.readyState !== 4) { return; }
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           var data = JSON.parse(xhr.responseText);
@@ -505,30 +815,20 @@
           }));
           renderWeather(data, false, timeStr);
           return;
-        } catch (e) {
-          // Rơi xuống nhánh dùng cache
-        }
+        } catch (e) { /* fallback */ }
       }
       handleWeatherFallback(city.id);
     };
 
-    xhr.ontimeout = function () {
-      handleWeatherFallback(city.id);
-    };
+    xhr.ontimeout = function () { handleWeatherFallback(city.id); };
+    xhr.onerror = function () { handleWeatherFallback(city.id); };
+    try { xhr.send(); } catch (e) { handleWeatherFallback(city.id); }
 
-    xhr.onerror = function () {
-      handleWeatherFallback(city.id);
-    };
-
-    try {
-      xhr.send();
-    } catch (e) {
-      handleWeatherFallback(city.id);
-    }
+    fetchAirQuality(city);
   }
 
   function handleWeatherFallback(cityId) {
-    var cached = loadCachedWeatherForCity(cityId);
+    var cached = loadCachedForCity(STORAGE_KEYS.WEATHER_CACHE, cityId);
     if (cached) {
       renderWeather(cached.data, true, cached.timeStr || "--:--");
     } else {
@@ -538,8 +838,118 @@
   }
 
   /* ========================================================================
-     3. LỊCH THÁNG (THỨ 2 -> CHỦ NHẬT)
+     3. ĐỒNG HỒ POMODORO / ĐẾM NGƯỢC E-INK
      ======================================================================== */
+  function flashGhostingAlert(times) {
+    var count = 0;
+    var maxFlashes = times * 2;
+    var cleaner = document.getElementById("ghost-cleaner");
+
+    function step() {
+      if (count >= maxFlashes) {
+        cleaner.style.display = "none";
+        return;
+      }
+      cleaner.style.display = (count % 2 === 0) ? "block" : "none";
+      count += 1;
+      window.setTimeout(step, 260);
+    }
+    step();
+  }
+
+  function renderPomodoro() {
+    var mins = state.pomo.remainingMinutes;
+    if (mins < 0) { mins = 0; }
+    document.getElementById("pomo-time").textContent = pad2(mins) + ":00";
+    document.getElementById("pomo-mode-label").textContent = state.pomo.label;
+    document.getElementById("btn-pomo-toggle").textContent = state.pomo.running ? "Tạm dừng" : "Bắt đầu";
+  }
+
+  function schedulePomodoroTick() {
+    if (state.pomo.timerId) {
+      window.clearTimeout(state.pomo.timerId);
+      state.pomo.timerId = null;
+    }
+    if (!state.pomo.running) {
+      return;
+    }
+
+    var nowMs = new Date().getTime();
+    var diffMs = state.pomo.endTimeMs - nowMs;
+    if (diffMs <= 0) {
+      state.pomo.running = false;
+      state.pomo.remainingMinutes = 0;
+      renderPomodoro();
+      document.getElementById("pomo-status").textContent = "Hết giờ! (" + state.pomo.label + ")";
+      flashGhostingAlert(3);
+      return;
+    }
+
+    var nextMins = Math.ceil(diffMs / 60000);
+    if (nextMins !== state.pomo.remainingMinutes) {
+      state.pomo.remainingMinutes = nextMins;
+      renderPomodoro();
+    }
+
+    // Chờ đúng đến lúc chuyển sang phút tiếp theo để hạn chế làm mới E-Ink
+    var remainderMs = diffMs % 60000;
+    var waitMs = remainderMs > 0 ? remainderMs + 80 : 60080;
+    state.pomo.timerId = window.setTimeout(schedulePomodoroTick, waitMs);
+  }
+
+  function setPomodoroPreset(mins, label) {
+    if (state.pomo.timerId) {
+      window.clearTimeout(state.pomo.timerId);
+      state.pomo.timerId = null;
+    }
+    state.pomo.running = false;
+    state.pomo.presetMinutes = mins;
+    state.pomo.remainingMinutes = mins;
+    state.pomo.label = label;
+    document.getElementById("pomo-status").textContent = "Sẵn sàng (" + mins + " phút · cập nhật mỗi phút)";
+
+    var btns = document.getElementById("pomo-presets").getElementsByTagName("button");
+    var i;
+    for (i = 0; i < btns.length; i++) {
+      var bMins = parseInt(btns[i].getAttribute("data-pomo-mins"), 10);
+      if (bMins === mins) {
+        addClass(btns[i], "is-active");
+      } else {
+        removeClass(btns[i], "is-active");
+      }
+    }
+    renderPomodoro();
+  }
+
+  /* ========================================================================
+     4. LỊCH THÁNG KÈM ÂM LỊCH, TIẾT KHÍ & SỰ KIỆN VIỆT NAM
+     ======================================================================== */
+  function renderSelectedDayDetail() {
+    var dd = state.selectedDay;
+    var mm = state.selectedMonth + 1;
+    var yy = state.selectedYear;
+    var dObj = new Date(yy, mm - 1, dd);
+    var weekday = WEEKDAYS_VI[dObj.getDay()];
+    var lunar = convertSolar2Lunar(dd, mm, yy, 7);
+    var canChi = getCanChiInfo(lunar);
+    var term = getSolarTermInfo(dd, mm, yy, 7);
+    var holidays = getHolidaysForDate(dd, mm, lunar);
+
+    var lunarMonthStr = lunar.month === 1 ? "Giêng" : String(lunar.month);
+    if (lunar.leap === 1) { lunarMonthStr += " (Nhuận)"; }
+
+    var html = "<strong>" + escapeHtml(weekday + ", " + pad2(dd) + "/" + pad2(mm) + "/" + yy) + "</strong>" +
+      " — Âm lịch: <strong>" + pad2(lunar.day) + "/" + lunarMonthStr + "</strong>" +
+      " (Năm " + escapeHtml(canChi.yearName) + ")" +
+      "<br>Ngày " + escapeHtml(canChi.dayName) + " · Tháng " + escapeHtml(canChi.monthName) +
+      " · " + (term.isStart ? "Đầu tiết " : "Tiết ") + "<strong>" + escapeHtml(term.name) + "</strong>";
+
+    if (holidays.length > 0) {
+      html += '<br><span class="detail-holiday-tag">Ngày lễ: ' + escapeHtml(holidays.join(", ")) + "</span>";
+    }
+    document.getElementById("calendar-day-detail").innerHTML = html;
+  }
+
   function renderCalendar() {
     var year = state.viewYear;
     var month = state.viewMonth;
@@ -547,7 +957,6 @@
       "THÁNG " + pad2(month + 1) + " / " + year;
 
     var firstDayJs = new Date(year, month, 1).getDay();
-    // Chuyển Chủ Nhật (0) thành 6, Thứ Hai (1) thành 0
     var startOffset = (firstDayJs + 6) % 7;
     var daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -569,8 +978,30 @@
         if ((row === 0 && col < startOffset) || day > daysInMonth) {
           html += '<td class="day-empty">&nbsp;</td>';
         } else {
-          var cls = (isCurrentMonth && day === todayDate) ? ' class="day-today"' : "";
-          html += "<td" + cls + ">" + day + "</td>";
+          var lunar = convertSolar2Lunar(day, month + 1, year, 7);
+          var holidays = getHolidaysForDate(day, month + 1, lunar);
+          var classes = ["day-cell"];
+          if (isCurrentMonth && day === todayDate) {
+            classes.push("day-today");
+          }
+          if (year === state.selectedYear && month === state.selectedMonth && day === state.selectedDay) {
+            classes.push("day-selected");
+          }
+          if (lunar.day === 1 || lunar.day === 15) {
+            classes.push("day-lunar-special");
+          }
+          if (holidays.length > 0) {
+            classes.push("day-holiday");
+          }
+
+          var lunarLabel = (lunar.day === 1 || day === 1)
+            ? lunar.day + "/" + lunar.month + (lunar.leap ? "N" : "")
+            : String(lunar.day);
+
+          html += '<td class="' + classes.join(" ") + '" data-cal-day="' + day + '">' +
+            '<span class="cal-solar">' + day + "</span>" +
+            '<span class="cal-lunar">' + lunarLabel + "</span>" +
+            "</td>";
           day++;
         }
       }
@@ -581,7 +1012,7 @@
   }
 
   /* ========================================================================
-     4. LỊCH BIỂU & VIỆC CẦN LÀM (LOCALSTORAGE)
+     5. LỊCH BIỂU, VIỆC CẦN LÀM & ĐỒNG BỘ / NHẬP XUẤT
      ======================================================================== */
   function loadTodos() {
     var raw = storageGet(STORAGE_KEYS.TODOS, null);
@@ -594,16 +1025,8 @@
       saveTodos();
       return;
     }
-    try {
-      var parsed = JSON.parse(raw);
-      if (parsed && parsed.length >= 0) {
-        state.todos = parsed;
-      } else {
-        state.todos = [];
-      }
-    } catch (e) {
-      state.todos = [];
-    }
+    var parsed = storageGetJson(STORAGE_KEYS.TODOS, []);
+    state.todos = (parsed && parsed.length >= 0) ? parsed : [];
   }
 
   function saveTodos() {
@@ -614,12 +1037,8 @@
     state.todos.sort(function (a, b) {
       var ta = a.time || "99:99";
       var tb = b.time || "99:99";
-      if (ta < tb) {
-        return -1;
-      }
-      if (ta > tb) {
-        return 1;
-      }
+      if (ta < tb) { return -1; }
+      if (ta > tb) { return 1; }
       return a.id - b.id;
     });
   }
@@ -627,7 +1046,7 @@
   function renderTodos() {
     var listEl = document.getElementById("todo-list");
     if (state.todos.length === 0) {
-      listEl.innerHTML = '<li class="todo-empty">Chưa có lịch trình nào. Hãy thêm công việc mới ở trên.</li>';
+      listEl.innerHTML = '<li class="todo-empty">Chưa có lịch trình nào. Hãy thêm việc mới hoặc dùng Đồng bộ / Nhập.</li>';
       return;
     }
 
@@ -657,13 +1076,11 @@
   }
 
   function addTodo(timeVal, textVal) {
-    var cleanText = textVal.replace(/^\s+|\s+$/g, "");
-    if (!cleanText) {
-      return;
-    }
-    var cleanTime = timeVal.replace(/^\s+|\s+$/g, "");
+    var cleanText = trimStr(textVal);
+    if (!cleanText) { return; }
+    var cleanTime = trimStr(timeVal);
     state.todos.push({
-      id: new Date().getTime(),
+      id: new Date().getTime() + Math.floor(Math.random() * 1000),
       time: cleanTime,
       text: cleanText,
       done: false
@@ -688,9 +1105,7 @@
     var next = [];
     var i;
     for (i = 0; i < state.todos.length; i++) {
-      if (state.todos[i].id !== id) {
-        next.push(state.todos[i]);
-      }
+      if (state.todos[i].id !== id) { next.push(state.todos[i]); }
     }
     state.todos = next;
     saveTodos();
@@ -701,17 +1116,839 @@
     var next = [];
     var i;
     for (i = 0; i < state.todos.length; i++) {
-      if (!state.todos[i].done) {
-        next.push(state.todos[i]);
-      }
+      if (!state.todos[i].done) { next.push(state.todos[i]); }
     }
     state.todos = next;
     saveTodos();
     renderTodos();
   }
 
+  function parseImportedTodos(rawText) {
+    var clean = trimStr(rawText);
+    if (!clean) { return []; }
+    var baseId = new Date().getTime();
+    var result = [];
+    var i;
+
+    if (clean.charAt(0) === "[") {
+      try {
+        var jsonArr = JSON.parse(clean);
+        if (jsonArr && jsonArr.length) {
+          for (i = 0; i < jsonArr.length; i++) {
+            var entry = jsonArr[i];
+            if (entry && entry.text) {
+              result.push({
+                id: baseId + i,
+                time: trimStr(entry.time || ""),
+                text: trimStr(entry.text),
+                done: Boolean(entry.done)
+              });
+            }
+          }
+          return result;
+        }
+      } catch (e) {
+        // Rơi xuống phân tích từng dòng
+      }
+    }
+
+    var lines = clean.split(/\r?\n/);
+    for (i = 0; i < lines.length; i++) {
+      var line = trimStr(lines[i]);
+      if (!line || line.charAt(0) === "#") { continue; }
+      var done = false;
+      if (line.indexOf("[x]") === 0 || line.indexOf("[X]") === 0) {
+        done = true;
+        line = trimStr(line.slice(3));
+      } else if (line.indexOf("[ ]") === 0) {
+        line = trimStr(line.slice(3));
+      }
+      var match = line.match(/^(\d{1,2}:\d{2})\s+(.+)$/);
+      if (match) {
+        var parts = match[1].split(":");
+        result.push({
+          id: baseId + i,
+          time: pad2(parseInt(parts[0], 10)) + ":" + parts[1],
+          text: trimStr(match[2]),
+          done: done
+        });
+      } else {
+        result.push({
+          id: baseId + i,
+          time: "",
+          text: line,
+          done: done
+        });
+      }
+    }
+    return result;
+  }
+
+  function applyImportedTodos(items, replaceAll) {
+    if (!items || items.length === 0) {
+      return 0;
+    }
+    if (replaceAll) {
+      state.todos = items;
+    } else {
+      var i;
+      for (i = 0; i < items.length; i++) {
+        state.todos.push(items[i]);
+      }
+    }
+    saveTodos();
+    renderTodos();
+    return items.length;
+  }
+
+  function fetchTodosFromUrl(replaceAll) {
+    var urlInput = document.getElementById("todo-sync-url");
+    var url = trimStr(urlInput.value);
+    var statusEl = document.getElementById("todo-sync-status");
+    if (!url) {
+      statusEl.textContent = "Vui lòng nhập đường dẫn Raw (.txt hoặc .json).";
+      return;
+    }
+    storageSet(STORAGE_KEYS.TODO_SYNC_URL, url);
+    statusEl.textContent = "Đang tải lịch biểu từ URL...";
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.timeout = 12000;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        var parsed = parseImportedTodos(xhr.responseText);
+        if (parsed.length > 0) {
+          applyImportedTodos(parsed, replaceAll);
+          document.getElementById("todo-import-text").value = xhr.responseText;
+          statusEl.textContent = "Đã đồng bộ thành công " + parsed.length + " mục!";
+        } else {
+          statusEl.textContent = "Tải được file nhưng không tìm thấy dòng lịch trình hợp lệ.";
+        }
+      } else {
+        statusEl.textContent = "Không tải được URL (mã lỗi " + xhr.status + "). Kiểm tra CORS hoặc link Raw.";
+      }
+    };
+    xhr.onerror = function () {
+      statusEl.textContent = "Lỗi mạng khi tải URL đồng bộ.";
+    };
+    xhr.ontimeout = function () {
+      statusEl.textContent = "Hết thời gian chờ tải URL.";
+    };
+    try { xhr.send(); } catch (e) { statusEl.textContent = "Không thể gửi yêu cầu tải URL."; }
+  }
+
   /* ========================================================================
-     5. CÔNG CỤ E-INK & HỘP THOẠI
+     6. TRÌNH ĐỌC TIN TỨC RSS CHUYÊN SÂU CHO E-INK
+     ======================================================================== */
+  function getAllRssFeeds() {
+    var list = [];
+    var i;
+    for (i = 0; i < DEFAULT_RSS_FEEDS.length; i++) {
+      list.push(DEFAULT_RSS_FEEDS[i]);
+    }
+    for (i = 0; i < state.rss.customFeeds.length; i++) {
+      list.push(state.rss.customFeeds[i]);
+    }
+    return list;
+  }
+
+  function findFeedById(id) {
+    var all = getAllRssFeeds();
+    var i;
+    for (i = 0; i < all.length; i++) {
+      if (all[i].id === id) {
+        return all[i];
+      }
+    }
+    return all[0];
+  }
+
+  function formatRssDate(dateStr) {
+    if (!dateStr) { return ""; }
+    var d = new Date(dateStr.replace(" ", "T"));
+    if (isNaN(d.getTime())) {
+      d = new Date(dateStr);
+    }
+    if (isNaN(d.getTime())) {
+      return String(dateStr).slice(0, 16);
+    }
+    return pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + " · " + pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1);
+  }
+
+  function getArticleId(item, feedName) {
+    return item.guid || item.link || (feedName + "::" + item.title);
+  }
+
+  function isArticleSaved(id) {
+    var i;
+    for (i = 0; i < state.rss.savedList.length; i++) {
+      if (state.rss.savedList[i].id === id) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function updateSavedCountBadge() {
+    document.getElementById("rss-saved-count").textContent = String(state.rss.savedList.length);
+  }
+
+  function renderRssSourceTabs() {
+    var container = document.getElementById("rss-source-tabs");
+    var feeds = getAllRssFeeds();
+    var html = "";
+    var i;
+    for (i = 0; i < feeds.length; i++) {
+      var f = feeds[i];
+      var cls = (f.id === state.rss.activeFeedId) ? " is-active" : "";
+      html += '<button type="button" class="btn btn-small rss-source-btn' + cls + '" data-feed-id="' + escapeHtml(f.id) + '">' +
+        escapeHtml(f.name) + "</button>";
+    }
+    container.innerHTML = html;
+  }
+
+  function getFilteredRssItems() {
+    var sourceItems = [];
+    if (state.rss.filterMode === "saved") {
+      sourceItems = state.rss.savedList;
+    } else {
+      var feedData = state.rss.cache[state.rss.activeFeedId];
+      sourceItems = (feedData && feedData.items) ? feedData.items : [];
+    }
+
+    var query = trimStr(state.rss.searchQuery).toLowerCase();
+    var result = [];
+    var i;
+    for (i = 0; i < sourceItems.length; i++) {
+      var item = sourceItems[i];
+      if (state.rss.filterMode === "unread" && state.rss.readMap[item.id]) {
+        continue;
+      }
+      if (query) {
+        var hay = (item.title + " " + item.snippet + " " + item.sourceName).toLowerCase();
+        if (hay.indexOf(query) === -1) {
+          continue;
+        }
+      }
+      result.push(item);
+    }
+    return result;
+  }
+
+  function renderRssList() {
+    updateSavedCountBadge();
+
+    var filterBtns = document.getElementById("rss-card").querySelectorAll("[data-rss-filter]");
+    var i;
+    for (i = 0; i < filterBtns.length; i++) {
+      if (filterBtns[i].getAttribute("data-rss-filter") === state.rss.filterMode) {
+        addClass(filterBtns[i], "is-active");
+      } else {
+        removeClass(filterBtns[i], "is-active");
+      }
+    }
+
+    var items = getFilteredRssItems();
+    state.rss.filteredItems = items;
+
+    var perPage = state.rssFullscreen ? 8 : 5;
+    var totalPages = Math.max(1, Math.ceil(items.length / perPage));
+    if (state.rss.currentPage > totalPages) { state.rss.currentPage = totalPages; }
+    if (state.rss.currentPage < 1) { state.rss.currentPage = 1; }
+
+    var start = (state.rss.currentPage - 1) * perPage;
+    var end = Math.min(items.length, start + perPage);
+    var listEl = document.getElementById("rss-list");
+
+    if (items.length === 0) {
+      var emptyMsg = state.rss.filterMode === "saved"
+        ? "Chưa có bài báo nào được lưu đọc offline."
+        : (state.rss.loadingFeed ? "Đang tải tin tức..." : "Không có bài viết nào phù hợp bộ lọc.");
+      listEl.innerHTML = '<li class="todo-empty">' + escapeHtml(emptyMsg) + "</li>";
+      document.getElementById("rss-page-info").textContent = "Trang 1 / 1";
+      return;
+    }
+
+    var html = "";
+    for (i = start; i < end; i++) {
+      var item = items[i];
+      var isRead = Boolean(state.rss.readMap[item.id]);
+      var isSaved = (isArticleSaved(item.id) !== -1);
+      var itemCls = isRead ? " is-read" : "";
+
+      var badges = '<span class="rss-badge">' + escapeHtml(item.sourceName) + "</span>";
+      if (isSaved) {
+        badges += '<span class="rss-badge is-solid">ĐÃ LƯU</span>';
+      }
+      if (isRead) {
+        badges += '<span class="rss-badge">ĐÃ ĐỌC</span>';
+      }
+
+      var snippetShort = item.snippet.length > 150 ? item.snippet.slice(0, 147) + "..." : item.snippet;
+
+      html += '<li class="rss-item' + itemCls + '">' +
+        '<div class="rss-item-main" data-rss-open="' + escapeHtml(item.id) + '">' +
+          '<div class="rss-item-title">' + escapeHtml(item.title) + "</div>" +
+          (snippetShort ? '<div class="rss-item-snippet">' + escapeHtml(snippetShort) + "</div>" : "") +
+          '<div class="rss-item-meta">' + badges + (item.pubText ? " · " + escapeHtml(item.pubText) : "") + "</div>" +
+        "</div>" +
+        '<div class="rss-item-actions">' +
+          '<button type="button" class="btn btn-small" data-rss-open="' + escapeHtml(item.id) + '">Đọc bài</button>' +
+          '<button type="button" class="btn btn-small" data-rss-toggle-save="' + escapeHtml(item.id) + '">' +
+            (isSaved ? "Bỏ lưu" : "Lưu offline") +
+          "</button>" +
+        "</div>" +
+      "</li>";
+    }
+
+    listEl.innerHTML = html;
+    document.getElementById("rss-page-info").textContent =
+      "Trang " + state.rss.currentPage + " / " + totalPages + " (" + items.length + " tin)";
+  }
+
+  function parseXmlRssItems(xmlStr, feed) {
+    var items = [];
+    if (!window.DOMParser) { return items; }
+    try {
+      var parser = new window.DOMParser();
+      var doc = parser.parseFromString(xmlStr, "text/xml");
+      var nodes = doc.getElementsByTagName("item");
+      var isAtom = false;
+      if (!nodes || nodes.length === 0) {
+        nodes = doc.getElementsByTagName("entry");
+        isAtom = true;
+      }
+      var i;
+      var maxCount = nodes.length < 20 ? nodes.length : 20;
+      for (i = 0; i < maxCount; i++) {
+        var node = nodes[i];
+        var titleEl = node.getElementsByTagName("title")[0];
+        var title = titleEl ? trimStr(titleEl.textContent || "") : "";
+        var link = "";
+        var linkEl = node.getElementsByTagName("link")[0];
+        if (linkEl) {
+          link = isAtom ? (linkEl.getAttribute("href") || linkEl.textContent || "") : (linkEl.textContent || "");
+        }
+        var descEl = node.getElementsByTagName("description")[0] || node.getElementsByTagName("summary")[0] || node.getElementsByTagName("content")[0];
+        var descRaw = descEl ? (descEl.textContent || "") : "";
+        var dateEl = node.getElementsByTagName("pubDate")[0] || node.getElementsByTagName("updated")[0] || node.getElementsByTagName("published")[0];
+        var pubDate = dateEl ? (dateEl.textContent || "") : "";
+        var guidEl = node.getElementsByTagName("guid")[0] || node.getElementsByTagName("id")[0];
+        var guid = guidEl ? (guidEl.textContent || "") : link;
+
+        if (title) {
+          var snippet = stripHtml(descRaw);
+          var art = {
+            id: guid || link || (feed.id + "-" + i),
+            title: decodeEntities(title),
+            link: trimStr(link),
+            pubDate: pubDate,
+            pubText: formatRssDate(pubDate),
+            snippet: snippet,
+            rawContent: descRaw,
+            sourceId: feed.id,
+            sourceName: feed.name,
+            fullParagraphs: null
+          };
+          items.push(art);
+        }
+      }
+    } catch (e) {
+      return [];
+    }
+    return items;
+  }
+
+  function saveRssCache(feedId, items, timeStr) {
+    state.rss.cache[feedId] = {
+      timeStr: timeStr,
+      items: items
+    };
+    // Giữ tối đa 5 nguồn gần nhất trong localStorage để tiết kiệm dung lượng
+    var keys = [];
+    var k;
+    for (k in state.rss.cache) {
+      if (state.rss.cache.hasOwnProperty(k)) { keys.push(k); }
+    }
+    if (keys.length > 5) {
+      for (var i = 0; i < keys.length - 5; i++) {
+        if (keys[i] !== feedId) {
+          delete state.rss.cache[keys[i]];
+        }
+      }
+    }
+    storageSet(STORAGE_KEYS.RSS_CACHE, JSON.stringify(state.rss.cache));
+  }
+
+  function fetchRssViaAllOrigins(feed) {
+    var statusEl = document.getElementById("rss-status");
+    var proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(feed.url);
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", proxyUrl, true);
+    xhr.timeout = 12000;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      state.rss.loadingFeed = false;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var res = JSON.parse(xhr.responseText);
+          if (res && res.contents) {
+            var items = parseXmlRssItems(res.contents, feed);
+            if (items.length > 0) {
+              var now = new Date();
+              var tStr = pad2(now.getHours()) + ":" + pad2(now.getMinutes());
+              saveRssCache(feed.id, items, tStr);
+              statusEl.textContent = feed.name + " · Cập nhật lúc " + tStr + " (" + items.length + " tin)";
+              renderRssList();
+              return;
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+      var cached = state.rss.cache[feed.id];
+      if (cached && cached.items && cached.items.length > 0) {
+        statusEl.textContent = feed.name + " · Đang dùng bản lưu tạm (" + (cached.timeStr || "--:--") + ")";
+      } else {
+        statusEl.textContent = "Không tải được nguồn " + feed.name + " (kiểm tra Wi-Fi hoặc URL RSS).";
+      }
+      renderRssList();
+    };
+    try { xhr.send(); } catch (e) {
+      state.rss.loadingFeed = false;
+      renderRssList();
+    }
+  }
+
+  function fetchRssFeed(feedId) {
+    var feed = findFeedById(feedId || state.rss.activeFeedId);
+    state.rss.activeFeedId = feed.id;
+    storageSet(STORAGE_KEYS.RSS_ACTIVE, feed.id);
+    renderRssSourceTabs();
+
+    var statusEl = document.getElementById("rss-status");
+    state.rss.loadingFeed = true;
+    statusEl.textContent = "Đang tải " + feed.name + "...";
+
+    var cached = state.rss.cache[feed.id];
+    if (cached && cached.items) {
+      renderRssList();
+    }
+
+    var apiUrl = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feed.url);
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", apiUrl, true);
+    xhr.timeout = 12000;
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (data && data.status === "ok" && data.items && data.items.length > 0) {
+            state.rss.loadingFeed = false;
+            var mapped = [];
+            var i;
+            for (i = 0; i < data.items.length; i++) {
+              var it = data.items[i];
+              var snippet = stripHtml(it.description || it.content || "");
+              mapped.push({
+                id: getArticleId(it, feed.name),
+                title: decodeEntities(trimStr(it.title || "Không có tiêu đề")),
+                link: trimStr(it.link || ""),
+                pubDate: it.pubDate || "",
+                pubText: formatRssDate(it.pubDate || ""),
+                snippet: snippet,
+                rawContent: it.content || it.description || "",
+                sourceId: feed.id,
+                sourceName: feed.name,
+                fullParagraphs: null
+              });
+            }
+            var now = new Date();
+            var tStr = pad2(now.getHours()) + ":" + pad2(now.getMinutes());
+            saveRssCache(feed.id, mapped, tStr);
+            statusEl.textContent = feed.name + " · Cập nhật lúc " + tStr + " (" + mapped.length + " tin)";
+            renderRssList();
+            return;
+          }
+        } catch (e) { /* fallback */ }
+      }
+      fetchRssViaAllOrigins(feed);
+    };
+
+    xhr.ontimeout = function () { fetchRssViaAllOrigins(feed); };
+    xhr.onerror = function () { fetchRssViaAllOrigins(feed); };
+    try { xhr.send(); } catch (e) { fetchRssViaAllOrigins(feed); }
+  }
+
+  function findArticleById(id) {
+    var i;
+    for (i = 0; i < state.rss.savedList.length; i++) {
+      if (state.rss.savedList[i].id === id) {
+        return state.rss.savedList[i];
+      }
+    }
+    var k;
+    for (k in state.rss.cache) {
+      if (state.rss.cache.hasOwnProperty(k)) {
+        var arr = state.rss.cache[k].items || [];
+        for (i = 0; i < arr.length; i++) {
+          if (arr[i].id === id) {
+            return arr[i];
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function toggleSaveArticle(id) {
+    var idx = isArticleSaved(id);
+    if (idx !== -1) {
+      state.rss.savedList.splice(idx, 1);
+    } else {
+      var art = findArticleById(id);
+      if (art) {
+        var copy = {
+          id: art.id,
+          title: art.title,
+          link: art.link,
+          pubDate: art.pubDate,
+          pubText: art.pubText,
+          snippet: art.snippet,
+          rawContent: art.rawContent,
+          sourceId: art.sourceId,
+          sourceName: art.sourceName,
+          fullParagraphs: art.fullParagraphs || null
+        };
+        state.rss.savedList.unshift(copy);
+        if (state.rss.savedList.length > 30) {
+          state.rss.savedList.pop();
+        }
+      }
+    }
+    storageSet(STORAGE_KEYS.RSS_SAVED, JSON.stringify(state.rss.savedList));
+    renderRssList();
+    if (state.rss.activeArticle && state.rss.activeArticle.id === id) {
+      updateArticleSaveButton();
+    }
+  }
+
+  /* ========================================================================
+     7. TRÌNH ĐỌC BÁO TOÀN VĂN & LẬT TRANG KIỂU KINDLE
+     ======================================================================== */
+  function cleanMarkdownLine(line) {
+    var s = trimStr(line);
+    // Bỏ hình ảnh markdown ![alt](url)
+    s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
+    // Chuyển link markdown [text](url) -> text
+    s = s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+    // Bỏ đánh dấu in đậm / nghiêng thừa ở dạng ký tự thô
+    s = s.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/__([^_]+)__/g, "$1");
+    s = trimStr(s);
+    return s;
+  }
+
+  function parseJinaMarkdown(rawText, articleTitle) {
+    var marker = "Markdown Content:";
+    var idx = rawText.indexOf(marker);
+    var body = idx !== -1 ? rawText.slice(idx + marker.length) : rawText;
+    var lines = body.split(/\r?\n/);
+    var blocks = [];
+    var totalChars = 0;
+    var i;
+
+    for (i = 0; i < lines.length; i++) {
+      var rawLine = trimStr(lines[i]);
+      if (!rawLine) { continue; }
+      if (/^[-=*_]{3,}$/.test(rawLine)) { continue; }
+      if (/^!\[.*\]\(.*\)$/.test(rawLine)) { continue; }
+      if (/^\*\s+\[/.test(rawLine)) { continue; }
+
+      var isHeading = false;
+      if (rawLine.indexOf("##") === 0 || rawLine.indexOf("# ") === 0) {
+        isHeading = true;
+        rawLine = rawLine.replace(/^#+\s*/, "");
+      } else if (rawLine.indexOf("> ") === 0) {
+        rawLine = rawLine.slice(2);
+      }
+
+      var cleaned = cleanMarkdownLine(rawLine);
+      if (!cleaned) { continue; }
+      // Bỏ dòng trùng với tiêu đề bài báo ở đầu
+      if (blocks.length === 0 && articleTitle && cleaned === trimStr(articleTitle)) {
+        continue;
+      }
+      // Bỏ các dòng rác điều hướng ngắn cuối/đầu trang
+      if (!isHeading && cleaned.length < 25 && (
+        cleaned.indexOf("Trang chủ") !== -1 ||
+        cleaned.indexOf("Tin mới") !== -1 ||
+        cleaned.indexOf("Xem thêm") !== -1 ||
+        cleaned.indexOf("Đăng nhập") !== -1 ||
+        cleaned.indexOf("Chia sẻ") !== -1 ||
+        cleaned.indexOf("Theo dõi") !== -1
+      )) {
+        continue;
+      }
+      if (/^https?:\/\/\S+$/.test(cleaned)) { continue; }
+
+      blocks.push({
+        type: isHeading ? "h" : "p",
+        text: cleaned
+      });
+      totalChars += cleaned.length;
+    }
+
+    if (totalChars < 120) {
+      return null;
+    }
+    return blocks;
+  }
+
+  function buildFallbackBlocks(article) {
+    var text = stripHtml(article.rawContent || article.snippet || "");
+    var lines = text.split(/\n+/);
+    var blocks = [];
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var s = trimStr(lines[i]);
+      if (s) {
+        blocks.push({ type: "p", text: s });
+      }
+    }
+    if (blocks.length === 0) {
+      blocks.push({ type: "p", text: "Bài viết chỉ cung cấp tiêu đề trên RSS. Hãy bấm 'Tải toàn văn' hoặc 'Mở link gốc'." });
+    }
+    return blocks;
+  }
+
+  function buildArticlePages(blocks) {
+    var limit = 950;
+    if (state.rss.articleFont === "lg") { limit = 760; }
+    if (state.rss.articleFont === "xl") { limit = 620; }
+    if (state.rss.articleFont === "sm") { limit = 1150; }
+
+    var pages = [];
+    var currentPage = [];
+    var currentLen = 0;
+    var i;
+
+    for (i = 0; i < blocks.length; i++) {
+      var b = blocks[i];
+      if (currentPage.length > 0 && currentLen + b.text.length > limit) {
+        pages.push(currentPage);
+        currentPage = [];
+        currentLen = 0;
+      }
+      currentPage.push(b);
+      currentLen += b.text.length;
+    }
+    if (currentPage.length > 0) {
+      pages.push(currentPage);
+    }
+    if (pages.length === 0) {
+      pages.push([{ type: "p", text: "Không có nội dung." }]);
+    }
+    return pages;
+  }
+
+  function updateArticleSaveButton() {
+    if (!state.rss.activeArticle) { return; }
+    var saved = (isArticleSaved(state.rss.activeArticle.id) !== -1);
+    var btn = document.getElementById("btn-article-save");
+    btn.textContent = saved ? "Đã lưu offline" : "Lưu offline";
+    if (saved) { addClass(btn, "is-active"); } else { removeClass(btn, "is-active"); }
+  }
+
+  function renderArticleReader() {
+    var art = state.rss.activeArticle;
+    if (!art) { return; }
+
+    var blocks = (art.fullParagraphs && art.fullParagraphs.length > 0)
+      ? art.fullParagraphs
+      : buildFallbackBlocks(art);
+
+    var contentEl = document.getElementById("article-content");
+    contentEl.className = "article-content art-font-" + state.rss.articleFont;
+
+    var modeBtn = document.getElementById("btn-article-mode-toggle");
+    var pageNav = document.getElementById("article-page-nav");
+
+    var renderBlocks;
+    if (state.rss.articleMode === "page") {
+      modeBtn.textContent = "Kiểu: Lật trang";
+      pageNav.style.display = "table";
+      state.rss.articlePages = buildArticlePages(blocks);
+      if (state.rss.articlePageIndex >= state.rss.articlePages.length) {
+        state.rss.articlePageIndex = state.rss.articlePages.length - 1;
+      }
+      if (state.rss.articlePageIndex < 0) {
+        state.rss.articlePageIndex = 0;
+      }
+      renderBlocks = state.rss.articlePages[state.rss.articlePageIndex];
+      document.getElementById("article-page-indicator").textContent =
+        "Trang " + (state.rss.articlePageIndex + 1) + " / " + state.rss.articlePages.length;
+    } else {
+      modeBtn.textContent = "Kiểu: Cuộn liền mạch";
+      pageNav.style.display = "none";
+      renderBlocks = blocks;
+    }
+
+    var html = "";
+    var i;
+    for (i = 0; i < renderBlocks.length; i++) {
+      var b = renderBlocks[i];
+      if (b.type === "h") {
+        html += '<h3 class="article-subhead">' + escapeHtml(b.text) + "</h3>";
+      } else {
+        html += "<p>" + escapeHtml(b.text) + "</p>";
+      }
+    }
+    contentEl.innerHTML = html;
+    document.getElementById("article-modal").scrollTop = 0;
+  }
+
+  function fetchArticleFullText(art) {
+    var statusEl = document.getElementById("article-status");
+    if (!art || !art.link) {
+      statusEl.textContent = "Bài viết không có liên kết gốc để trích xuất toàn văn.";
+      return;
+    }
+    statusEl.textContent = "Đang trích xuất toàn văn bài báo cho E-Ink...";
+
+    var url = "https://r.jina.ai/" + art.link;
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    try {
+      xhr.setRequestHeader("Accept", "application/json");
+    } catch (e) { /* bỏ qua nếu trình duyệt cũ không cho phép */ }
+    xhr.timeout = 15000;
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300 && xhr.responseText) {
+        var mdText = xhr.responseText;
+        try {
+          var jsonRes = JSON.parse(xhr.responseText);
+          if (jsonRes && jsonRes.data && jsonRes.data.content) {
+            mdText = jsonRes.data.content;
+          }
+        } catch (e) {
+          // Giữ nguyên dạng văn bản thô nếu không phải JSON
+        }
+        var blocks = parseJinaMarkdown(mdText, art.title);
+        if (blocks && blocks.length > 0) {
+          art.fullParagraphs = blocks;
+          // Cập nhật lại nếu bài này đã lưu offline
+          var savedIdx = isArticleSaved(art.id);
+          if (savedIdx !== -1) {
+            state.rss.savedList[savedIdx].fullParagraphs = blocks;
+            storageSet(STORAGE_KEYS.RSS_SAVED, JSON.stringify(state.rss.savedList));
+          }
+          if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
+            state.rss.articlePageIndex = 0;
+            statusEl.textContent = "Đã tải toàn văn (" + blocks.length + " đoạn · chế độ E-Ink sạch quảng cáo).";
+            renderArticleReader();
+          }
+          return;
+        }
+      }
+      if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
+        statusEl.textContent = "Không trích xuất được toàn văn trang này — đang hiển thị tóm tắt RSS.";
+      }
+    };
+
+    xhr.ontimeout = function () {
+      if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
+        statusEl.textContent = "Hết thời gian tải toàn văn — đang hiển thị tóm tắt RSS.";
+      }
+    };
+    xhr.onerror = function () {
+      if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
+        statusEl.textContent = "Không có mạng hoặc trang nguồn chặn trích xuất — hiển thị tóm tắt RSS.";
+      }
+    };
+    try { xhr.send(); } catch (e) { /* ignore */ }
+  }
+
+  function openArticleModal(id) {
+    var art = findArticleById(id);
+    if (!art) { return; }
+
+    state.rss.readMap[art.id] = 1;
+    storageSet(STORAGE_KEYS.RSS_READ, JSON.stringify(state.rss.readMap));
+    renderRssList();
+
+    state.rss.activeArticle = art;
+    state.rss.articlePageIndex = 0;
+
+    document.getElementById("article-source-badge").textContent = art.sourceName;
+    document.getElementById("article-title").textContent = art.title;
+    document.getElementById("article-meta").textContent =
+      art.sourceName + (art.pubText ? " · " + art.pubText : "");
+
+    var origLink = document.getElementById("article-original-link");
+    origLink.href = art.link || "#";
+    updateArticleSaveButton();
+
+    var statusEl = document.getElementById("article-status");
+    if (art.fullParagraphs && art.fullParagraphs.length > 0) {
+      statusEl.textContent = "Đang đọc toàn văn đã lưu (" + art.fullParagraphs.length + " đoạn).";
+      renderArticleReader();
+    } else {
+      statusEl.textContent = "Đang hiển thị tóm tắt RSS và tự động tải toàn văn...";
+      renderArticleReader();
+      fetchArticleFullText(art);
+    }
+
+    openModal("article-modal");
+  }
+
+  function navigateArticleInFeed(delta) {
+    if (!state.rss.activeArticle || state.rss.filteredItems.length === 0) { return; }
+    var idx = -1;
+    var i;
+    for (i = 0; i < state.rss.filteredItems.length; i++) {
+      if (state.rss.filteredItems[i].id === state.rss.activeArticle.id) {
+        idx = i;
+        break;
+      }
+    }
+    var nextIdx = idx + delta;
+    if (nextIdx >= 0 && nextIdx < state.rss.filteredItems.length) {
+      openArticleModal(state.rss.filteredItems[nextIdx].id);
+    }
+  }
+
+  function renderRssManageModal() {
+    var listEl = document.getElementById("rss-manage-list");
+    var all = getAllRssFeeds();
+    var html = "";
+    var i;
+    for (i = 0; i < all.length; i++) {
+      var f = all[i];
+      var delBtn = f.builtin
+        ? ""
+        : '<button type="button" class="btn btn-small" data-rss-del-feed="' + escapeHtml(f.id) + '">Xóa</button>';
+      html += '<div class="rss-manage-item">' +
+        '<div class="rss-manage-info">' +
+          "<strong>" + escapeHtml(f.name) + "</strong>" +
+          (f.id === state.rss.activeFeedId ? " (Đang chọn)" : "") +
+          '<div class="rss-manage-url">' + escapeHtml(f.url) + "</div>" +
+        "</div>" +
+        '<div class="rss-manage-actions">' +
+          '<button type="button" class="btn btn-small" data-rss-pick-feed="' + escapeHtml(f.id) + '">Đọc ngay</button>' +
+          delBtn +
+        "</div>" +
+      "</div>";
+    }
+    listEl.innerHTML = html;
+  }
+
+  /* ========================================================================
+     8. CÔNG CỤ E-INK, CÀI ĐẶT TỰ ĐỘNG & CỠ CHỮ
      ======================================================================== */
   function cleanGhosting() {
     var cleaner = document.getElementById("ghost-cleaner");
@@ -719,6 +1956,128 @@
     window.setTimeout(function () {
       cleaner.style.display = "none";
     }, 200);
+  }
+
+  function applyAutoCleanTimer() {
+    if (state.autoCleanTimerId) {
+      window.clearInterval(state.autoCleanTimerId);
+      state.autoCleanTimerId = null;
+    }
+    if (state.autoCleanMinutes > 0) {
+      state.autoCleanTimerId = window.setInterval(cleanGhosting, state.autoCleanMinutes * 60 * 1000);
+    }
+    updateEinkStatusPill();
+  }
+
+  function updateEinkStatusPill() {
+    var parts = [];
+    parts.push("Làm mới: " + (state.autoCleanMinutes > 0 ? state.autoCleanMinutes + "p" : "Tắt"));
+    if (state.autoNightEnabled) {
+      parts.push("Đêm tự động: Bật");
+    }
+    document.getElementById("eink-status-pill").textContent = parts.join(" · ");
+  }
+
+  function applyFontScale(scale) {
+    if (indexInArray(FONT_SCALES, scale) === -1) {
+      scale = "md";
+    }
+    state.fontScale = scale;
+    storageSet(STORAGE_KEYS.FONT_SCALE, scale);
+    var i;
+    for (i = 0; i < FONT_SCALES.length; i++) {
+      removeClass(document.body, "font-" + FONT_SCALES[i]);
+    }
+    addClass(document.body, "font-" + scale);
+    syncSettingsModalUi();
+  }
+
+  function stepFontScale(delta) {
+    var idx = indexInArray(FONT_SCALES, state.fontScale);
+    if (idx === -1) { idx = 1; }
+    var nextIdx = idx + delta;
+    if (nextIdx < 0) { nextIdx = 0; }
+    if (nextIdx >= FONT_SCALES.length) { nextIdx = FONT_SCALES.length - 1; }
+    applyFontScale(FONT_SCALES[nextIdx]);
+  }
+
+  function stepArticleFont(delta) {
+    var idx = indexInArray(FONT_SCALES, state.rss.articleFont);
+    if (idx === -1) { idx = 1; }
+    var nextIdx = idx + delta;
+    if (nextIdx < 0) { nextIdx = 0; }
+    if (nextIdx >= FONT_SCALES.length) { nextIdx = FONT_SCALES.length - 1; }
+    state.rss.articleFont = FONT_SCALES[nextIdx];
+    storageSet(STORAGE_KEYS.RSS_ART_FONT, state.rss.articleFont);
+    renderArticleReader();
+  }
+
+  function toggleZenMode(forceVal) {
+    if (typeof forceVal === "boolean") {
+      state.zenMode = forceVal;
+    } else {
+      state.zenMode = !state.zenMode;
+    }
+    if (state.zenMode) {
+      state.rssFullscreen = false;
+      removeClass(document.body, "rss-fullscreen-mode");
+      addClass(document.body, "zen-mode");
+    } else {
+      removeClass(document.body, "zen-mode");
+    }
+    storageSet(STORAGE_KEYS.ZEN_MODE, state.zenMode ? "1" : "0");
+    document.getElementById("btn-zen-mode").textContent = state.zenMode ? "Thu gọn" : "Toàn màn hình";
+    document.getElementById("btn-zen-toolbar").textContent = state.zenMode ? "Thoát Zen" : "Toàn màn hình";
+    document.getElementById("btn-rss-fullscreen").textContent = "Mở rộng";
+  }
+
+  function toggleRssFullscreen(forceVal) {
+    if (typeof forceVal === "boolean") {
+      state.rssFullscreen = forceVal;
+    } else {
+      state.rssFullscreen = !state.rssFullscreen;
+    }
+    if (state.rssFullscreen) {
+      state.zenMode = false;
+      removeClass(document.body, "zen-mode");
+      storageSet(STORAGE_KEYS.ZEN_MODE, "0");
+      addClass(document.body, "rss-fullscreen-mode");
+    } else {
+      removeClass(document.body, "rss-fullscreen-mode");
+    }
+    document.getElementById("btn-rss-fullscreen").textContent = state.rssFullscreen ? "Thu gọn" : "Mở rộng";
+    document.getElementById("btn-rss-toolbar").textContent = state.rssFullscreen ? "Về Dashboard" : "Đọc báo RSS";
+    document.getElementById("btn-zen-mode").textContent = "Toàn màn hình";
+    document.getElementById("btn-zen-toolbar").textContent = "Toàn màn hình";
+    state.rss.currentPage = 1;
+    renderRssList();
+  }
+
+  function syncSettingsModalUi() {
+    var cleanBtns = document.getElementById("settings-clean-options").getElementsByTagName("button");
+    var i;
+    for (i = 0; i < cleanBtns.length; i++) {
+      var mins = parseInt(cleanBtns[i].getAttribute("data-auto-clean"), 10);
+      if (mins === state.autoCleanMinutes) {
+        addClass(cleanBtns[i], "is-active");
+      } else {
+        removeClass(cleanBtns[i], "is-active");
+      }
+    }
+
+    var nightBtn = document.getElementById("btn-setting-autonight");
+    nightBtn.textContent = state.autoNightEnabled ? "Đang Bật (19:00–06:00)" : "Đang Tắt";
+    if (state.autoNightEnabled) { addClass(nightBtn, "is-active"); } else { removeClass(nightBtn, "is-active"); }
+
+    var fontBtns = document.getElementById("settings-font-options").getElementsByTagName("button");
+    for (i = 0; i < fontBtns.length; i++) {
+      var sc = fontBtns[i].getAttribute("data-font-scale");
+      if (sc === state.fontScale) {
+        addClass(fontBtns[i], "is-active");
+      } else {
+        removeClass(fontBtns[i], "is-active");
+      }
+    }
   }
 
   function renderCityModalList() {
@@ -745,11 +2104,10 @@
   }
 
   /* ========================================================================
-     6. KHỞI TẠO & GẮN SỰ KIỆN
+     9. KHỞI TẠO & GẮN SỰ KIỆN
      ======================================================================== */
   function restorePreferences() {
-    var savedCity = storageGet(STORAGE_KEYS.CITY, "danang");
-    state.cityId = findCityById(savedCity).id;
+    state.cityId = findCityById(storageGet(STORAGE_KEYS.CITY, "danang")).id;
 
     if (storageGet(STORAGE_KEYS.INVERT, "0") === "1") {
       addClass(document.body, "invert-mode");
@@ -757,13 +2115,77 @@
     if (storageGet(STORAGE_KEYS.LANDSCAPE, "0") === "1") {
       addClass(document.body, "landscape-mode");
     }
+
+    state.autoNightEnabled = (storageGet(STORAGE_KEYS.AUTO_NIGHT, "0") === "1");
+    state.autoCleanMinutes = parseInt(storageGet(STORAGE_KEYS.AUTO_CLEAN, "0"), 10) || 0;
+    applyAutoCleanTimer();
+
+    applyFontScale(storageGet(STORAGE_KEYS.FONT_SCALE, "md"));
+    toggleZenMode(storageGet(STORAGE_KEYS.ZEN_MODE, "0") === "1");
+
+    state.rss.customFeeds = storageGetJson(STORAGE_KEYS.RSS_CUSTOM, []);
+    state.rss.activeFeedId = findFeedById(storageGet(STORAGE_KEYS.RSS_ACTIVE, "vne-new")).id;
+    state.rss.cache = storageGetJson(STORAGE_KEYS.RSS_CACHE, {});
+    state.rss.readMap = storageGetJson(STORAGE_KEYS.RSS_READ, {});
+    state.rss.savedList = storageGetJson(STORAGE_KEYS.RSS_SAVED, []);
+    state.rss.articleMode = storageGet(STORAGE_KEYS.RSS_PAGE_MODE, "page");
+    state.rss.articleFont = storageGet(STORAGE_KEYS.RSS_ART_FONT, "md");
+
+    document.getElementById("todo-sync-url").value = storageGet(STORAGE_KEYS.TODO_SYNC_URL, "");
   }
 
   function bindEvents() {
-    document.getElementById("btn-refresh-weather").onclick = function () {
-      fetchWeather();
+    // Đồng hồ & Zen Mode
+    document.getElementById("btn-zen-mode").onclick = function () { toggleZenMode(); };
+    document.getElementById("btn-zen-toolbar").onclick = function () { toggleZenMode(); };
+    document.getElementById("clock-time").onclick = function () { toggleZenMode(); };
+
+    // Thời tiết
+    document.getElementById("btn-refresh-weather").onclick = function () { fetchWeather(); };
+
+    // Pomodoro
+    document.getElementById("pomo-presets").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      if (!target) { return; }
+      var minsAttr = target.getAttribute("data-pomo-mins");
+      if (minsAttr) {
+        setPomodoroPreset(parseInt(minsAttr, 10), target.getAttribute("data-pomo-label") || "Đếm ngược");
+      }
+    };
+    document.getElementById("btn-pomo-plus5").onclick = function () {
+      state.pomo.remainingMinutes += 5;
+      if (state.pomo.running) {
+        state.pomo.endTimeMs += 5 * 60000;
+        schedulePomodoroTick();
+      }
+      renderPomodoro();
+    };
+    document.getElementById("btn-pomo-toggle").onclick = function () {
+      if (state.pomo.running) {
+        var diff = state.pomo.endTimeMs - new Date().getTime();
+        state.pomo.remainingMinutes = Math.max(1, Math.ceil(diff / 60000));
+        state.pomo.running = false;
+        if (state.pomo.timerId) {
+          window.clearTimeout(state.pomo.timerId);
+          state.pomo.timerId = null;
+        }
+        document.getElementById("pomo-status").textContent = "Đã tạm dừng ở mức " + state.pomo.remainingMinutes + " phút";
+      } else {
+        if (state.pomo.remainingMinutes <= 0) {
+          state.pomo.remainingMinutes = state.pomo.presetMinutes;
+        }
+        state.pomo.running = true;
+        state.pomo.endTimeMs = new Date().getTime() + state.pomo.remainingMinutes * 60000;
+        document.getElementById("pomo-status").textContent = "Đang chạy · Tự báo bằng nháy E-Ink 3 lần";
+        schedulePomodoroTick();
+      }
+      renderPomodoro();
+    };
+    document.getElementById("btn-pomo-reset").onclick = function () {
+      setPomodoroPreset(state.pomo.presetMinutes, state.pomo.label);
     };
 
+    // Lịch tháng
     document.getElementById("btn-prev-month").onclick = function () {
       state.viewMonth -= 1;
       if (state.viewMonth < 0) {
@@ -772,7 +2194,6 @@
       }
       renderCalendar();
     };
-
     document.getElementById("btn-next-month").onclick = function () {
       state.viewMonth += 1;
       if (state.viewMonth > 11) {
@@ -781,48 +2202,273 @@
       }
       renderCalendar();
     };
-
-    document.getElementById("todo-form").onsubmit = function (e) {
-      if (e && e.preventDefault) {
-        e.preventDefault();
-      }
-      var timeInput = document.getElementById("todo-time");
-      var textInput = document.getElementById("todo-text");
-      addTodo(timeInput.value, textInput.value);
-      textInput.value = "";
-      return false;
-    };
-
-    document.getElementById("todo-list").onclick = function (e) {
+    document.getElementById("calendar-body").onclick = function (e) {
       var target = e ? (e.target || e.srcElement) : window.event.srcElement;
-      while (target && target.id !== "todo-list") {
-        var action = target.getAttribute("data-action");
-        if (action) {
-          var id = parseInt(target.getAttribute("data-id"), 10);
-          if (action === "toggle") {
-            toggleTodoById(id);
-          } else if (action === "delete") {
-            deleteTodoById(id);
-          }
+      while (target && target.id !== "calendar-body") {
+        var dAttr = target.getAttribute("data-cal-day");
+        if (dAttr) {
+          state.selectedYear = state.viewYear;
+          state.selectedMonth = state.viewMonth;
+          state.selectedDay = parseInt(dAttr, 10);
+          renderCalendar();
+          renderSelectedDayDetail();
           return;
         }
         target = target.parentNode;
       }
     };
 
-    document.getElementById("btn-clear-done").onclick = function () {
-      clearDoneTodos();
+    // Lịch biểu & Đồng bộ
+    document.getElementById("todo-form").onsubmit = function (e) {
+      if (e && e.preventDefault) { e.preventDefault(); }
+      var timeInput = document.getElementById("todo-time");
+      var textInput = document.getElementById("todo-text");
+      addTodo(timeInput.value, textInput.value);
+      textInput.value = "";
+      return false;
+    };
+    document.getElementById("todo-list").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      while (target && target.id !== "todo-list") {
+        var action = target.getAttribute("data-action");
+        if (action) {
+          var id = parseInt(target.getAttribute("data-id"), 10);
+          if (action === "toggle") { toggleTodoById(id); }
+          if (action === "delete") { deleteTodoById(id); }
+          return;
+        }
+        target = target.parentNode;
+      }
+    };
+    document.getElementById("btn-clear-done").onclick = function () { clearDoneTodos(); };
+    document.getElementById("btn-todo-sync").onclick = function () {
+      document.getElementById("todo-sync-status").textContent = "";
+      openModal("todo-sync-modal");
+    };
+    document.getElementById("btn-close-todo-sync").onclick = function () { closeModal("todo-sync-modal"); };
+    document.getElementById("btn-todo-fetch-url").onclick = function () { fetchTodosFromUrl(true); };
+    document.getElementById("btn-todo-append-url").onclick = function () { fetchTodosFromUrl(false); };
+    document.getElementById("btn-todo-preset-teach").onclick = function () {
+      var sample = [
+        { id: new Date().getTime() + 1, time: "07:15", text: "Kiểm tra giáo án & chuẩn bị lên lớp", done: false },
+        { id: new Date().getTime() + 2, time: "07:30", text: "Giảng dạy ca sáng (Tiết 1–4)", done: false },
+        { id: new Date().getTime() + 3, time: "13:30", text: "Hướng dẫn sinh viên / Nghiên cứu", done: false },
+        { id: new Date().getTime() + 4, time: "16:30", text: "Tổng kết bài dạy & ghi chú hôm sau", done: false }
+      ];
+      applyImportedTodos(sample, true);
+      document.getElementById("todo-sync-status").textContent = "Đã nạp Mẫu Ngày giảng dạy!";
+    };
+    document.getElementById("btn-todo-preset-focus").onclick = function () {
+      var sample = [
+        { id: new Date().getTime() + 1, time: "08:00", text: "2 phiên Pomodoro xử lý việc quan trọng nhất", done: false },
+        { id: new Date().getTime() + 2, time: "10:00", text: "Kiểm tra email & phản hồi công việc", done: false },
+        { id: new Date().getTime() + 3, time: "14:00", text: "Viết tài liệu / Lập trình chuyên sâu", done: false },
+        { id: new Date().getTime() + 4, time: "21:00", text: "Đọc sách trên Kindle trước khi ngủ", done: false }
+      ];
+      applyImportedTodos(sample, true);
+      document.getElementById("todo-sync-status").textContent = "Đã nạp Mẫu Làm việc tập trung!";
+    };
+    document.getElementById("btn-todo-import-replace").onclick = function () {
+      var parsed = parseImportedTodos(document.getElementById("todo-import-text").value);
+      var count = applyImportedTodos(parsed, true);
+      document.getElementById("todo-sync-status").textContent = count > 0
+        ? "Đã thay thế bằng " + count + " mục lịch trình."
+        : "Không tìm thấy nội dung hợp lệ để nhập.";
+    };
+    document.getElementById("btn-todo-import-append").onclick = function () {
+      var parsed = parseImportedTodos(document.getElementById("todo-import-text").value);
+      var count = applyImportedTodos(parsed, false);
+      document.getElementById("todo-sync-status").textContent = count > 0
+        ? "Đã thêm " + count + " mục mới."
+        : "Không tìm thấy nội dung hợp lệ để thêm.";
+    };
+    document.getElementById("btn-todo-export-fill").onclick = function () {
+      var lines = [];
+      var i;
+      sortTodos();
+      for (i = 0; i < state.todos.length; i++) {
+        var t = state.todos[i];
+        lines.push((t.done ? "[x] " : "") + (t.time ? t.time + " " : "") + t.text);
+      }
+      document.getElementById("todo-import-text").value = lines.join("\n");
+      document.getElementById("todo-sync-status").textContent = "Đã xuất lịch hiện tại vào ô văn bản.";
     };
 
-    document.getElementById("btn-clean-ghost").onclick = function () {
-      cleanGhosting();
+    // RSS Reader danh sách & bộ lọc
+    document.getElementById("btn-rss-fullscreen").onclick = function () { toggleRssFullscreen(); };
+    document.getElementById("btn-rss-toolbar").onclick = function () { toggleRssFullscreen(); };
+    document.getElementById("btn-rss-refresh").onclick = function () { fetchRssFeed(state.rss.activeFeedId); };
+    document.getElementById("rss-source-tabs").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      var fid = target ? target.getAttribute("data-feed-id") : null;
+      if (fid) {
+        if (state.rss.filterMode === "saved") {
+          state.rss.filterMode = "all";
+        }
+        state.rss.currentPage = 1;
+        fetchRssFeed(fid);
+      }
+    };
+    document.getElementById("btn-rss-filter-all").onclick = function () {
+      state.rss.filterMode = "all";
+      state.rss.currentPage = 1;
+      renderRssList();
+    };
+    document.getElementById("btn-rss-filter-unread").onclick = function () {
+      state.rss.filterMode = "unread";
+      state.rss.currentPage = 1;
+      renderRssList();
+    };
+    document.getElementById("btn-rss-filter-saved").onclick = function () {
+      state.rss.filterMode = "saved";
+      state.rss.currentPage = 1;
+      renderRssList();
+    };
+    document.getElementById("btn-rss-mark-all-read").onclick = function () {
+      var feedData = state.rss.cache[state.rss.activeFeedId];
+      if (feedData && feedData.items) {
+        var i;
+        for (i = 0; i < feedData.items.length; i++) {
+          state.rss.readMap[feedData.items[i].id] = 1;
+        }
+        storageSet(STORAGE_KEYS.RSS_READ, JSON.stringify(state.rss.readMap));
+        renderRssList();
+      }
+    };
+    document.getElementById("rss-search-input").oninput = function () {
+      state.rss.searchQuery = this.value || "";
+      state.rss.currentPage = 1;
+      renderRssList();
+    };
+    document.getElementById("btn-rss-clear-search").onclick = function () {
+      document.getElementById("rss-search-input").value = "";
+      state.rss.searchQuery = "";
+      state.rss.currentPage = 1;
+      renderRssList();
+    };
+    document.getElementById("btn-rss-prev-page").onclick = function () {
+      if (state.rss.currentPage > 1) {
+        state.rss.currentPage -= 1;
+        renderRssList();
+      }
+    };
+    document.getElementById("btn-rss-next-page").onclick = function () {
+      state.rss.currentPage += 1;
+      renderRssList();
+    };
+    document.getElementById("rss-list").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      while (target && target.id !== "rss-list") {
+        var saveId = target.getAttribute("data-rss-toggle-save");
+        if (saveId) {
+          toggleSaveArticle(saveId);
+          return;
+        }
+        var openId = target.getAttribute("data-rss-open");
+        if (openId) {
+          openArticleModal(openId);
+          return;
+        }
+        target = target.parentNode;
+      }
     };
 
+    // Quản lý nguồn RSS
+    document.getElementById("btn-rss-manage").onclick = function () {
+      document.getElementById("rss-manage-status").textContent = "";
+      renderRssManageModal();
+      openModal("rss-manage-modal");
+    };
+    document.getElementById("btn-close-rss-manage").onclick = function () { closeModal("rss-manage-modal"); };
+    document.getElementById("btn-rss-add-source").onclick = function () {
+      var name = trimStr(document.getElementById("rss-add-name").value);
+      var url = trimStr(document.getElementById("rss-add-url").value);
+      var statusEl = document.getElementById("rss-manage-status");
+      if (!name || !url || url.indexOf("http") !== 0) {
+        statusEl.textContent = "Vui lòng nhập Tên nguồn và đường dẫn RSS bắt đầu bằng http:// hoặc https://.";
+        return;
+      }
+      var newFeed = {
+        id: "custom-" + new Date().getTime(),
+        name: name,
+        url: url,
+        builtin: false
+      };
+      state.rss.customFeeds.push(newFeed);
+      storageSet(STORAGE_KEYS.RSS_CUSTOM, JSON.stringify(state.rss.customFeeds));
+      document.getElementById("rss-add-name").value = "";
+      document.getElementById("rss-add-url").value = "";
+      statusEl.textContent = "Đã thêm nguồn: " + name;
+      renderRssSourceTabs();
+      renderRssManageModal();
+    };
+    document.getElementById("rss-manage-list").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      var pickId = target ? target.getAttribute("data-rss-pick-feed") : null;
+      if (pickId) {
+        closeModal("rss-manage-modal");
+        state.rss.filterMode = "all";
+        state.rss.currentPage = 1;
+        fetchRssFeed(pickId);
+        return;
+      }
+      var delId = target ? target.getAttribute("data-rss-del-feed") : null;
+      if (delId) {
+        var next = [];
+        var i;
+        for (i = 0; i < state.rss.customFeeds.length; i++) {
+          if (state.rss.customFeeds[i].id !== delId) {
+            next.push(state.rss.customFeeds[i]);
+          }
+        }
+        state.rss.customFeeds = next;
+        storageSet(STORAGE_KEYS.RSS_CUSTOM, JSON.stringify(state.rss.customFeeds));
+        if (state.rss.activeFeedId === delId) {
+          state.rss.activeFeedId = DEFAULT_RSS_FEEDS[0].id;
+        }
+        renderRssSourceTabs();
+        renderRssManageModal();
+      }
+    };
+
+    // Trình đọc bài viết toàn văn
+    document.getElementById("btn-close-article").onclick = function () { closeModal("article-modal"); };
+    document.getElementById("btn-article-font-down").onclick = function () { stepArticleFont(-1); };
+    document.getElementById("btn-article-font-up").onclick = function () { stepArticleFont(1); };
+    document.getElementById("btn-article-save").onclick = function () {
+      if (state.rss.activeArticle) { toggleSaveArticle(state.rss.activeArticle.id); }
+    };
+    document.getElementById("btn-article-fetch-full").onclick = function () {
+      if (state.rss.activeArticle) { fetchArticleFullText(state.rss.activeArticle); }
+    };
+    document.getElementById("btn-article-mode-toggle").onclick = function () {
+      state.rss.articleMode = (state.rss.articleMode === "page") ? "scroll" : "page";
+      storageSet(STORAGE_KEYS.RSS_PAGE_MODE, state.rss.articleMode);
+      renderArticleReader();
+    };
+    document.getElementById("btn-article-page-prev").onclick = function () {
+      if (state.rss.articlePageIndex > 0) {
+        state.rss.articlePageIndex -= 1;
+        renderArticleReader();
+      }
+    };
+    document.getElementById("btn-article-page-next").onclick = function () {
+      if (state.rss.articlePageIndex < state.rss.articlePages.length - 1) {
+        state.rss.articlePageIndex += 1;
+        renderArticleReader();
+      }
+    };
+    document.getElementById("btn-article-item-prev").onclick = function () { navigateArticleInFeed(-1); };
+    document.getElementById("btn-article-item-next").onclick = function () { navigateArticleInFeed(1); };
+
+    // Thanh công cụ dưới cùng & Cài đặt E-Ink
+    document.getElementById("btn-clean-ghost").onclick = function () { cleanGhosting(); };
+    document.getElementById("btn-font-down").onclick = function () { stepFontScale(-1); };
+    document.getElementById("btn-font-up").onclick = function () { stepFontScale(1); };
     document.getElementById("btn-toggle-invert").onclick = function () {
       var isInvert = toggleClass(document.body, "invert-mode");
       storageSet(STORAGE_KEYS.INVERT, isInvert ? "1" : "0");
     };
-
     document.getElementById("btn-toggle-layout").onclick = function () {
       var isLandscape = toggleClass(document.body, "landscape-mode");
       storageSet(STORAGE_KEYS.LANDSCAPE, isLandscape ? "1" : "0");
@@ -832,11 +2478,7 @@
       renderCityModalList();
       openModal("city-modal");
     };
-
-    document.getElementById("btn-close-city").onclick = function () {
-      closeModal("city-modal");
-    };
-
+    document.getElementById("btn-close-city").onclick = function () { closeModal("city-modal"); };
     document.getElementById("city-list").onclick = function (e) {
       var target = e ? (e.target || e.srcElement) : window.event.srcElement;
       if (target && target.getAttribute("data-city")) {
@@ -847,13 +2489,47 @@
       }
     };
 
-    document.getElementById("btn-help-modal").onclick = function () {
-      openModal("help-modal");
+    document.getElementById("btn-settings-modal").onclick = function () {
+      syncSettingsModalUi();
+      openModal("settings-modal");
+    };
+    document.getElementById("btn-close-settings").onclick = function () { closeModal("settings-modal"); };
+    document.getElementById("settings-clean-options").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      var mins = target ? target.getAttribute("data-auto-clean") : null;
+      if (mins !== null) {
+        state.autoCleanMinutes = parseInt(mins, 10) || 0;
+        storageSet(STORAGE_KEYS.AUTO_CLEAN, String(state.autoCleanMinutes));
+        applyAutoCleanTimer();
+        syncSettingsModalUi();
+      }
+    };
+    document.getElementById("btn-setting-autonight").onclick = function () {
+      state.autoNightEnabled = !state.autoNightEnabled;
+      state.lastAutoNightState = null;
+      storageSet(STORAGE_KEYS.AUTO_NIGHT, state.autoNightEnabled ? "1" : "0");
+      if (state.autoNightEnabled) {
+        checkAutoNightMode(new Date());
+      }
+      updateEinkStatusPill();
+      syncSettingsModalUi();
+    };
+    document.getElementById("settings-font-options").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      var sc = target ? target.getAttribute("data-font-scale") : null;
+      if (sc) { applyFontScale(sc); }
+    };
+    document.getElementById("btn-setting-layout").onclick = function () {
+      var isLandscape = toggleClass(document.body, "landscape-mode");
+      storageSet(STORAGE_KEYS.LANDSCAPE, isLandscape ? "1" : "0");
+    };
+    document.getElementById("btn-setting-invert").onclick = function () {
+      var isInvert = toggleClass(document.body, "invert-mode");
+      storageSet(STORAGE_KEYS.INVERT, isInvert ? "1" : "0");
     };
 
-    document.getElementById("btn-close-help").onclick = function () {
-      closeModal("help-modal");
-    };
+    document.getElementById("btn-help-modal").onclick = function () { openModal("help-modal"); };
+    document.getElementById("btn-close-help").onclick = function () { closeModal("help-modal"); };
   }
 
   function init() {
@@ -862,15 +2538,26 @@
     bindEvents();
     updateClock();
     renderTodos();
+    renderPomodoro();
+    renderRssSourceTabs();
+    renderRssList();
 
-    var cached = loadCachedWeatherForCity(state.cityId);
-    if (cached) {
-      renderWeather(cached.data, true, cached.timeStr || "--:--");
+    var cachedWeather = loadCachedForCity(STORAGE_KEYS.WEATHER_CACHE, state.cityId);
+    if (cachedWeather) {
+      renderWeather(cachedWeather.data, true, cachedWeather.timeStr || "--:--");
+    }
+    var cachedAqi = loadCachedForCity(STORAGE_KEYS.AQI_CACHE, state.cityId);
+    if (cachedAqi) {
+      renderAirQuality(cachedAqi.data);
     }
     fetchWeather();
+    fetchRssFeed(state.rss.activeFeedId);
 
-    // Tự động cập nhật thời tiết mỗi 30 phút
+    // Tự động cập nhật thời tiết mỗi 30 phút và RSS mỗi 60 phút
     window.setInterval(fetchWeather, 30 * 60 * 1000);
+    window.setInterval(function () {
+      fetchRssFeed(state.rss.activeFeedId);
+    }, 60 * 60 * 1000);
   }
 
   init();

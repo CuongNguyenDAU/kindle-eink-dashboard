@@ -6,7 +6,7 @@
   <title>Kindle E-Ink Dashboard</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="font-md">
   <!-- Lớp phủ khử bóng mờ (ghosting) cho màn hình mực điện tử -->
   <div id="ghost-cleaner" aria-hidden="true"></div>
 
@@ -16,28 +16,34 @@
       <div class="top-bar-left">
         <span class="badge-title">KINDLE DASHBOARD</span>
         <span id="location-label" class="location-label">Đà Nẵng</span>
+        <span id="eink-status-pill" class="eink-status-pill">Auto E-Ink: Tắt</span>
       </div>
       <div class="top-bar-right">
         <span id="weather-sync-status" class="sync-status">Đang tải thời tiết...</span>
       </div>
     </header>
 
-    <!-- Khung nội dung chính (1 cột ở chế độ Dọc, 2 cột ở chế độ Ngang) -->
+    <!-- Khung nội dung chính -->
     <main class="dashboard-grid">
-      <!-- CỘT TRÁI: ĐỒNG HỒ + LỊCH ÂM DƯƠNG + THỜI TIẾT -->
+      <!-- CỘT TRÁI: ĐỒNG HỒ + THỜI TIẾT + POMODORO -->
       <section class="col-left">
-        <!-- Khối Đồng hồ & Ngày tháng -->
+        <!-- 1. Khối Đồng hồ & Ngày Âm Dương & Tiết khí -->
         <div class="card clock-card">
-          <div id="clock-time" class="clock-time">--:--</div>
+          <div class="clock-top-actions">
+            <button type="button" class="btn btn-small" id="btn-zen-mode">Toàn màn hình</button>
+          </div>
+          <div id="clock-time" class="clock-time" title="Chạm để phóng to toàn màn hình">--:--</div>
           <div id="solar-date" class="solar-date">Đang tải ngày...</div>
           <div id="lunar-date" class="lunar-date">Âm lịch: --/--</div>
-          <div id="canchi-date" class="canchi-date">Ngày --, tháng --, năm --</div>
+          <div id="canchi-date" class="canchi-date">Ngày -- · Tháng --</div>
+          <div id="solar-term-badge" class="solar-term-badge">Tiết khí: --</div>
+          <div id="holiday-banner" class="holiday-banner"></div>
         </div>
 
-        <!-- Khối Thời tiết hiện tại & Dự báo -->
+        <!-- 2. Khối Thời tiết, Không khí & Biểu đồ 12 giờ -->
         <div class="card weather-card">
           <div class="card-header">
-            <h2 class="card-title">THỜI TIẾT</h2>
+            <h2 class="card-title">THỜI TIẾT &amp; KHÔNG KHÍ</h2>
             <button type="button" class="btn btn-small" id="btn-refresh-weather">Cập nhật</button>
           </div>
 
@@ -64,15 +70,67 @@
             </div>
           </div>
 
+          <div class="weather-metrics weather-metrics-ext">
+            <div class="metric-box">
+              <span class="metric-label">Tia UV</span>
+              <strong id="weather-uv" class="metric-value">--</strong>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">AQI / PM2.5</span>
+              <strong id="weather-aqi" class="metric-value">--</strong>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Mưa</span>
+              <strong id="weather-rain-prob" class="metric-value">--%</strong>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Mọc / Lặn</span>
+              <strong id="weather-sun" class="metric-value">-- / --</strong>
+            </div>
+          </div>
+
+          <div class="hourly-section">
+            <div class="subsection-label">XU HƯỚNG 12 GIỜ TỚI (NHIỆT ĐỘ &amp; MƯA)</div>
+            <div id="weather-hourly-chart" class="weather-hourly-chart">
+              <div class="chart-empty">Đang tải dữ liệu theo giờ...</div>
+            </div>
+          </div>
+
           <div id="weather-forecast" class="weather-forecast">
             <!-- Dự báo 3 ngày tới được render bằng JS -->
           </div>
         </div>
+
+        <!-- 3. Khối Đồng hồ Pomodoro / Đếm ngược tiết học -->
+        <div class="card pomodoro-card">
+          <div class="card-header">
+            <h2 class="card-title">ĐỒNG HỒ TẬP TRUNG</h2>
+            <span id="pomo-mode-label" class="pomo-mode-label">Pomodoro</span>
+          </div>
+
+          <div class="pomo-display-row">
+            <div id="pomo-time" class="pomo-time">25:00</div>
+            <div id="pomo-status" class="pomo-status">Cập nhật mỗi phút · Nháy màn hình 3 lần khi hết giờ</div>
+          </div>
+
+          <div class="pomo-presets" id="pomo-presets">
+            <button type="button" class="btn btn-small is-active" data-pomo-mins="25" data-pomo-label="Pomodoro">25p</button>
+            <button type="button" class="btn btn-small" data-pomo-mins="5" data-pomo-label="Nghỉ ngắn">5p</button>
+            <button type="button" class="btn btn-small" data-pomo-mins="15" data-pomo-label="Nghỉ dài">15p</button>
+            <button type="button" class="btn btn-small" data-pomo-mins="45" data-pomo-label="Tiết học">45p</button>
+            <button type="button" class="btn btn-small" id="btn-pomo-plus5">+5p</button>
+          </div>
+
+          <div class="pomo-controls">
+            <button type="button" class="btn pomo-ctrl-btn" id="btn-pomo-toggle">Bắt đầu</button>
+            <button type="button" class="btn pomo-ctrl-btn" id="btn-pomo-reset">Đặt lại</button>
+          </div>
+        </div>
       </section>
 
-      <!-- CỘT PHẢI: LỊCH THÁNG + LỊCH BIỂU TRONG NGÀY -->
+      <!-- CỘT PHẢI: LỊCH THÁNG + LỊCH BIỂU + TRÌNH ĐỌC TIN RSS -->
       <section class="col-right">
-        <!-- Khối Lịch tháng -->
+        <!-- 4. Khối Lịch tháng kèm Âm lịch & Ngày lễ -->
         <div class="card calendar-card">
           <div class="card-header">
             <button type="button" class="btn btn-small" id="btn-prev-month">&#9664; Trước</button>
@@ -93,13 +151,19 @@
             </thead>
             <tbody id="calendar-body"></tbody>
           </table>
+          <div id="calendar-day-detail" class="calendar-day-detail">
+            Chạm vào một ngày bất kỳ để xem Âm lịch, Tiết khí và Ngày lễ.
+          </div>
         </div>
 
-        <!-- Khối Lịch biểu & Việc cần làm -->
+        <!-- 5. Khối Lịch biểu & Việc cần làm + Đồng bộ -->
         <div class="card schedule-card">
           <div class="card-header">
             <h2 class="card-title">LỊCH BIỂU &amp; VIỆC CẦN LÀM</h2>
-            <button type="button" class="btn btn-small" id="btn-clear-done">Xóa mục xong</button>
+            <div class="header-btn-group">
+              <button type="button" class="btn btn-small" id="btn-todo-sync">Đồng bộ / Nhập</button>
+              <button type="button" class="btn btn-small" id="btn-clear-done">Xóa xong</button>
+            </div>
           </div>
 
           <form id="todo-form" class="todo-form">
@@ -110,15 +174,60 @@
 
           <ul id="todo-list" class="todo-list"></ul>
         </div>
+
+        <!-- 6. Khối Trình đọc tin tức RSS cho E-Ink -->
+        <div class="card rss-card" id="rss-card">
+          <div class="card-header">
+            <h2 class="card-title">TIN TỨC RSS (E-INK)</h2>
+            <div class="header-btn-group">
+              <button type="button" class="btn btn-small" id="btn-rss-fullscreen">Mở rộng</button>
+              <button type="button" class="btn btn-small" id="btn-rss-manage">Nguồn tin</button>
+              <button type="button" class="btn btn-small" id="btn-rss-refresh">Tải tin</button>
+            </div>
+          </div>
+
+          <!-- Chọn nguồn tin nhanh -->
+          <div id="rss-source-tabs" class="rss-source-tabs"></div>
+
+          <!-- Bộ lọc trạng thái đọc & Tìm kiếm -->
+          <div class="rss-filter-bar">
+            <div class="rss-filter-tabs">
+              <button type="button" class="btn btn-small is-active" data-rss-filter="all" id="btn-rss-filter-all">Tất cả</button>
+              <button type="button" class="btn btn-small" data-rss-filter="unread" id="btn-rss-filter-unread">Chưa đọc</button>
+              <button type="button" class="btn btn-small" data-rss-filter="saved" id="btn-rss-filter-saved">Đã lưu (<span id="rss-saved-count">0</span>)</button>
+            </div>
+            <button type="button" class="btn btn-small" id="btn-rss-mark-all-read">Đọc hết</button>
+          </div>
+
+          <div class="rss-search-row">
+            <input type="text" id="rss-search-input" class="input-text rss-search-input" maxlength="80" placeholder="Lọc theo tiêu đề hoặc từ khóa..." aria-label="Lọc tin tức">
+            <button type="button" class="btn btn-small" id="btn-rss-clear-search">Xóa lọc</button>
+          </div>
+
+          <div id="rss-status" class="rss-status">Sẵn sàng tải bản tin...</div>
+
+          <ul id="rss-list" class="rss-list"></ul>
+
+          <div class="rss-pagination">
+            <button type="button" class="btn btn-small" id="btn-rss-prev-page">&#9664; Trang trước</button>
+            <span id="rss-page-info" class="rss-page-info">Trang 1 / 1</span>
+            <button type="button" class="btn btn-small" id="btn-rss-next-page">Trang sau &#9654;</button>
+          </div>
+        </div>
       </section>
     </main>
 
     <!-- Thanh điều khiển E-Ink cố định dưới cùng -->
     <footer class="bottom-toolbar">
       <button type="button" class="btn toolbar-btn" id="btn-clean-ghost">Làm mới E-Ink</button>
-      <button type="button" class="btn toolbar-btn" id="btn-city-modal">Thành phố</button>
+      <button type="button" class="btn toolbar-btn" id="btn-zen-toolbar">Toàn màn hình</button>
+      <button type="button" class="btn toolbar-btn" id="btn-rss-toolbar">Đọc báo RSS</button>
+      <button type="button" class="btn toolbar-btn" id="btn-font-down">A-</button>
+      <button type="button" class="btn toolbar-btn" id="btn-font-up">A+</button>
       <button type="button" class="btn toolbar-btn" id="btn-toggle-layout">Ngang / Dọc</button>
       <button type="button" class="btn toolbar-btn" id="btn-toggle-invert">Đen / Trắng</button>
+      <button type="button" class="btn toolbar-btn" id="btn-city-modal">Thành phố</button>
+      <button type="button" class="btn toolbar-btn" id="btn-settings-modal">Cài đặt E-Ink</button>
       <button type="button" class="btn toolbar-btn" id="btn-help-modal">Mẹo ~ds</button>
     </footer>
   </div>
@@ -131,6 +240,156 @@
         <button type="button" class="btn btn-small" id="btn-close-city">Đóng</button>
       </div>
       <div id="city-list" class="city-list"></div>
+    </div>
+  </div>
+
+  <!-- Hộp thoại Cài đặt E-Ink -->
+  <div id="settings-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="settings-modal-title">CÀI ĐẶT HIỂN THỊ E-INK</h3>
+        <button type="button" class="btn btn-small" id="btn-close-settings">Đóng</button>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">1. Tự động khử bóng mờ (Auto Ghost-Cleaning):</div>
+        <div class="settings-options" id="settings-clean-options">
+          <button type="button" class="btn btn-small" data-auto-clean="0">Tắt</button>
+          <button type="button" class="btn btn-small" data-auto-clean="15">15 phút</button>
+          <button type="button" class="btn btn-small" data-auto-clean="30">30 phút</button>
+          <button type="button" class="btn btn-small" data-auto-clean="60">60 phút</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">2. Tự động nền tối ban đêm (19:00 – 06:00):</div>
+        <div class="settings-options">
+          <button type="button" class="btn btn-small" id="btn-setting-autonight">Đang Tắt</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">3. Cỡ chữ hiển thị toàn trang:</div>
+        <div class="settings-options" id="settings-font-options">
+          <button type="button" class="btn btn-small" data-font-scale="sm">Nhỏ (90%)</button>
+          <button type="button" class="btn btn-small" data-font-scale="md">Vừa (100%)</button>
+          <button type="button" class="btn btn-small" data-font-scale="lg">Lớn (115%)</button>
+          <button type="button" class="btn btn-small" data-font-scale="xl">Rất lớn (130%)</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">4. Bố cục &amp; Màu sắc:</div>
+        <div class="settings-options">
+          <button type="button" class="btn btn-small" id="btn-setting-layout">Đổi Dọc / Ngang</button>
+          <button type="button" class="btn btn-small" id="btn-setting-invert">Đảo Đen / Trắng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hộp thoại Đồng bộ / Nhập lịch biểu -->
+  <div id="todo-sync-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="todo-sync-title">
+    <div class="modal-box modal-box-wide">
+      <div class="modal-header">
+        <h3 id="todo-sync-title">ĐỒNG BỘ &amp; NHẬP LỊCH BIỂU NHANH</h3>
+        <button type="button" class="btn btn-small" id="btn-close-todo-sync">Đóng</button>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">Đồng bộ từ đường dẫn trực tuyến (GitHub Gist Raw / file .txt / .json):</div>
+        <div class="sync-url-row">
+          <input type="text" id="todo-sync-url" class="input-text sync-url-input" placeholder="https://gist.githubusercontent.com/.../raw/schedule.txt" aria-label="URL đồng bộ lịch biểu">
+        </div>
+        <div class="settings-options">
+          <button type="button" class="btn btn-small" id="btn-todo-fetch-url">Tải &amp; Thay thế</button>
+          <button type="button" class="btn btn-small" id="btn-todo-append-url">Tải &amp; Gộp thêm</button>
+        </div>
+        <div id="todo-sync-status" class="modal-status"></div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">Nạp nhanh lịch mẫu (1 chạm không cần gõ phím):</div>
+        <div class="settings-options">
+          <button type="button" class="btn btn-small" id="btn-todo-preset-teach">Mẫu Ngày giảng dạy</button>
+          <button type="button" class="btn btn-small" id="btn-todo-preset-focus">Mẫu Làm việc tập trung</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">Nhập hoặc Xuất văn bản (Mỗi dòng: <code>HH:MM Nội dung</code> hoặc dán JSON):</div>
+        <textarea id="todo-import-text" class="sync-textarea" rows="6" placeholder="07:30 Lên lớp tiết 1-2&#10;10:00 Họp chuyên môn&#10;14:30 Soạn bài giảng"></textarea>
+        <div class="settings-options">
+          <button type="button" class="btn btn-small" id="btn-todo-import-replace">Thay toàn bộ</button>
+          <button type="button" class="btn btn-small" id="btn-todo-import-append">Thêm vào danh sách</button>
+          <button type="button" class="btn btn-small" id="btn-todo-export-fill">Xuất lịch hiện tại</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hộp thoại Quản lý nguồn tin RSS -->
+  <div id="rss-manage-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rss-manage-title">
+    <div class="modal-box modal-box-wide">
+      <div class="modal-header">
+        <h3 id="rss-manage-title">QUẢN LÝ NGUỒN TIN RSS</h3>
+        <button type="button" class="btn btn-small" id="btn-close-rss-manage">Đóng</button>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">Thêm nguồn RSS mới (hỗ trợ RSS / Atom tiếng Việt &amp; quốc tế):</div>
+        <div class="rss-add-form">
+          <input type="text" id="rss-add-name" class="input-text rss-add-input" maxlength="40" placeholder="Tên nguồn (VD: VnExpress Số hóa)">
+          <input type="text" id="rss-add-url" class="input-text rss-add-input" maxlength="250" placeholder="https://vnexpress.net/rss/so-hoa.rss">
+          <button type="button" class="btn btn-small" id="btn-rss-add-source">+ Thêm nguồn</button>
+        </div>
+        <div id="rss-manage-status" class="modal-status"></div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">Danh sách nguồn hiện có (chạm để đọc ngay):</div>
+        <div id="rss-manage-list" class="rss-manage-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hộp thoại Trình đọc báo toàn văn kiểu Kindle -->
+  <div id="article-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="article-title">
+    <div class="modal-box article-reader-box">
+      <div class="modal-header">
+        <span id="article-source-badge" class="badge-title">RSS READER</span>
+        <div class="header-btn-group">
+          <button type="button" class="btn btn-small" id="btn-article-font-down">A-</button>
+          <button type="button" class="btn btn-small" id="btn-article-font-up">A+</button>
+          <button type="button" class="btn btn-small" id="btn-article-save">Lưu offline</button>
+          <button type="button" class="btn btn-small" id="btn-close-article">Đóng</button>
+        </div>
+      </div>
+
+      <h2 id="article-title" class="article-title">Tiêu đề bài báo</h2>
+      <div id="article-meta" class="article-meta">Nguồn · Ngày đăng</div>
+
+      <div class="article-mode-bar">
+        <button type="button" class="btn btn-small" id="btn-article-fetch-full">Tải toàn văn</button>
+        <button type="button" class="btn btn-small" id="btn-article-mode-toggle">Kiểu: Lật trang</button>
+        <a id="article-original-link" class="btn btn-small" href="#" target="_blank" rel="noopener noreferrer">Mở link gốc</a>
+      </div>
+
+      <div id="article-status" class="article-status">Đang chuẩn bị nội dung...</div>
+
+      <div id="article-content" class="article-content"></div>
+
+      <div class="article-footer-nav">
+        <div id="article-page-nav" class="article-page-nav">
+          <button type="button" class="btn btn-small" id="btn-article-page-prev">&#9664; Trang trước</button>
+          <span id="article-page-indicator" class="rss-page-info">Trang 1 / 1</span>
+          <button type="button" class="btn btn-small" id="btn-article-page-next">Trang sau &#9654;</button>
+        </div>
+        <div class="article-item-nav">
+          <button type="button" class="btn btn-small" id="btn-article-item-prev">&#9664; Bài trước</button>
+          <button type="button" class="btn btn-small" id="btn-article-item-next">Bài tiếp &#9654;</button>
+        </div>
+      </div>
     </div>
   </div>
 

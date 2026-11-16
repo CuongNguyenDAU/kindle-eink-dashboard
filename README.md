@@ -1,23 +1,42 @@
-# Kindle E-Ink Dashboard (Đồng hồ · Thời tiết · Lịch biểu)
+# Kindle E-Ink Dashboard (Đồng hồ · Thời tiết · Lịch · Pomodoro · Đọc báo RSS)
 
-Ứng dụng web tối ưu chuyên biệt cho màn hình mực điện tử **Amazon Kindle E-Ink** (không cần Jailbreak, chạy trực tiếp trên trình duyệt có sẵn của Kindle).
+Ứng dụng web tối ưu chuyên biệt cho màn hình mực điện tử **Amazon Kindle E-Ink** (không cần Jailbreak, chạy trực tiếp trên trình duyệt có sẵn của Kindle bằng mã ES5 thuần, độ tương phản tuyệt đối đen – trắng `#000000` / `#FFFFFF`, tắt toàn bộ hiệu ứng chuyển động).
+
+- **Trang chạy trực tiếp (GitHub Pages):** https://cuongnguyendau.github.io/kindle-eink-dashboard/
+
+---
 
 ## Tính năng chính
 
-- **Đồng hồ & Lịch Âm Dương Việt Nam:**
-  - Đồng hồ cỡ lớn chỉ cập nhật mỗi đầu phút để tiết kiệm pin và tránh nháy màn hình E-Ink.
-  - Tự động tính ngày Âm lịch và Can Chi (Ngày, Tháng, Năm) theo múi giờ Việt Nam (`UTC+7`) hoàn toàn offline.
-- **Thời tiết thực tế (Open-Meteo API):**
-  - Không cần đăng ký API key. Hiển thị nhiệt độ, cảm giác thực, độ ẩm, tốc độ gió và dự báo 3 ngày tới bằng bộ icon SVG đơn sắc nét đậm.
-  - Hỗ trợ chọn nhanh 8 thành phố: Đà Nẵng (mặc định), Hà Nội, TP. Hồ Chí Minh, Huế, Đà Lạt, Cần Thơ, Hải Phòng, Nha Trang.
-  - Tự động lưu bản ghi cuối cùng vào `localStorage` để vẫn xem được khi tắt Wi-Fi.
-- **Lịch tháng & Lịch biểu cá nhân:**
-  - Bảng lịch tháng (Thứ 2 – Chủ Nhật) đánh dấu nổi bật ngày hôm nay.
-  - Danh sách việc cần làm / lịch hẹn theo giờ lưu trên máy (`localStorage`), chạm để đánh dấu hoàn thành hoặc xóa.
-- **Thanh công cụ chuyên dụng cho E-Ink:**
-  - **Làm mới E-Ink:** Nháy đen–trắng toàn màn hình 200ms giúp xóa bóng mờ (*ghosting*).
-  - **Ngang / Dọc:** Chuyển đổi nhanh giữa bố cục 1 cột (đặt dọc) và 2 cột (đặt ngang trên giá đỡ).
-  - **Đen / Trắng:** Đảo màu nền đen – chữ trắng để dùng ban đêm.
+### 1. Chăm sóc màn hình E-Ink & Hiển thị thông minh
+- **Làm mới E-Ink & Tự động khử bóng mờ (Auto Ghost-Cleaning):** Nháy đen–trắng toàn màn hình `200ms` theo thao tác tay hoặc tự động định kỳ `15 / 30 / 60 phút` trong hộp thoại **Cài đặt E-Ink**.
+- **Chế độ Toàn màn hình (Zen / Big Clock Mode):** Chạm vào giờ đồng hồ hoặc nút **Toàn màn hình** để phóng to Đồng hồ + Lịch Âm Dương + Thời tiết hiện tại, dễ nhìn từ xa 2–3 mét.
+- **Tự động nền tối ban đêm (Auto Night Mode):** Tự động chuyển nền đen – chữ trắng từ `19:00` đến `06:00` sáng hôm sau.
+- **Tùy chỉnh cỡ chữ (`A-` / `A+`):** 4 mức tỷ lệ chữ (`90%`, `100%`, `115%`, `130%`) cho toàn trang và cỡ chữ riêng trong trình đọc báo.
+- **Ngang / Dọc & Đen / Trắng:** Chuyển nhanh bố cục 1 cột (đặt dọc) và 2 cột (đặt ngang trên giá đỡ), hoặc đảo màu thủ công.
+
+### 2. Đồng hồ, Lịch Âm Dương Việt Nam, Tiết khí & Ngày lễ
+- Đồng hồ cỡ lớn chỉ cập nhật mỗi đầu phút để tiết kiệm pin và tránh nháy màn hình E-Ink.
+- Tự động tính Âm lịch, Can Chi (Ngày, Tháng, Năm) và **24 Tiết khí** theo múi giờ Việt Nam (`UTC+7`) hoàn toàn offline.
+- **Lịch tháng kèm Âm lịch & Ngày lễ:** Mỗi ô lịch hiển thị ngày Dương lịch và Âm lịch, đánh dấu ngày Mùng 1, ngày Rằm (`15`) và các ngày lễ Dương lịch / Âm lịch Việt Nam. Chạm vào bất kỳ ngày nào trên lịch để xem thông tin chi tiết bên dưới.
+
+### 3. Thời tiết, Không khí (AQI / UV) & Biểu đồ 12 giờ (Open-Meteo API)
+- Không cần đăng ký API key. Hiển thị nhiệt độ, cảm giác thực, độ ẩm, tốc độ gió, **chỉ số tia UV**, **chỉ số chất lượng không khí (`US AQI` & `PM2.5`)**, **khả năng mưa (%)**, **giờ Mặt trời mọc / lặn**, và dự báo 3 ngày tới bằng icon SVG đơn sắc.
+- **Biểu đồ xu hướng 12 giờ tới:** Thanh cột E-Ink đơn sắc biểu diễn nhiệt độ và xác suất mưa theo từng mốc 2 giờ.
+- Hỗ trợ chọn nhanh 8 thành phố: Đà Nẵng (mặc định), Hà Nội, TP. Hồ Chí Minh, Huế, Đà Lạt, Cần Thơ, Hải Phòng, Nha Trang. Tự động lưu bộ nhớ tạm vào `localStorage` để xem khi offline.
+
+### 4. Đồng hồ Pomodoro / Đếm ngược tiết học E-Ink
+- Các mốc nhanh `25p` (Pomodoro), `5p` (Nghỉ ngắn), `15p` (Nghỉ dài), `45p` (Tiết học) và nút `+5p`.
+- Chỉ cập nhật hiển thị mỗi phút một lần để bảo vệ màn hình E-Ink; khi hết giờ tự động **nháy đảo màu màn hình 3 lần** báo hiệu không tiếng ồn.
+
+### 5. Lịch biểu cá nhân & Đồng bộ nhanh
+- Quản lý danh sách việc cần làm / lịch hẹn theo giờ lưu trên `localStorage`.
+- **Đồng bộ / Nhập nhanh:** Hỗ trợ nạp mẫu lịch trình 1 chạm (Ngày giảng dạy / Làm việc tập trung), dán nhiều dòng theo dạng `HH:MM Nội dung` hoặc JSON, và tải đồng bộ trực tiếp từ URL Raw (như GitHub Gist) để khỏi phải gõ nhiều trên màn hình Kindle.
+
+### 6. Trình đọc tin tức RSS chuyên sâu cho E-Ink
+- **9 nguồn tin tích hợp sẵn** (VnExpress Tin mới/Công nghệ/Giáo dục/Kinh doanh/Thế giới, Tuổi Trẻ, Thanh Niên, Dân Trí, Hacker News) và cho phép **tự thêm/xóa nguồn RSS tùy chỉnh**.
+- **Quản lý bài đọc:** Lọc theo **Tất cả / Chưa đọc / Đã lưu (Offline)**, lọc từ khóa, đánh dấu đã đọc và phân trang danh sách tin.
+- **Chế độ Đọc báo toàn màn hình & Đọc toàn văn kiểu Kindle:** Tự động trích xuất nội dung bài viết sạch quảng cáo, hỗ trợ **lật trang kiểu sách Kindle** (`Trang trước` / `Trang sau`) hoặc cuộn liền mạch, chỉnh cỡ chữ `A-` / `A+` và **Lưu offline** để đọc lại khi tắt Wi-Fi.
 
 ---
 
