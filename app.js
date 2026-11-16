@@ -35,6 +35,7 @@
     TODO_SYNC_URL: "kindle_dash_todo_sync_url_v1",
     INVERT: "kindle_dash_invert_v1",
     LANDSCAPE: "kindle_dash_landscape_v1",
+    ROTATION: "kindle_dash_rotation_v1",
     ZEN_MODE: "kindle_dash_zen_v1",
     FONT_SCALE: "kindle_dash_font_scale_v1",
     AUTO_CLEAN: "kindle_dash_auto_clean_v1",
@@ -79,6 +80,7 @@
     autoCleanMinutes: 0,
     autoCleanTimerId: null,
     autoNightEnabled: false,
+    rotationDeg: 0,
     zenMode: false,
     rssFullscreen: false,
     pomo: {
@@ -1744,10 +1746,101 @@
   function updateEinkStatusPill() {
     var parts = [];
     parts.push("Làm mới: " + (state.autoCleanMinutes > 0 ? state.autoCleanMinutes + "p" : "Tắt"));
+    if (state.rotationDeg !== 0) {
+      parts.push("Xoay: " + state.rotationDeg + "°");
+    }
     if (state.autoNightEnabled) {
       parts.push("Đêm tự động: Bật");
     }
     document.getElementById("eink-status-pill").textContent = parts.join(" · ");
+  }
+
+  function updateRotatedInset() {
+    var scrollEl = document.getElementById("rotator-scroll");
+    var toolbar = document.getElementById("bottom-toolbar");
+    if (!scrollEl || !toolbar) { return; }
+    if (state.rotationDeg === 0) {
+      scrollEl.style.bottom = "";
+    } else {
+      scrollEl.style.bottom = (toolbar.offsetHeight || 58) + "px";
+    }
+  }
+
+  function applyRotation(deg, autoAdjustLayout) {
+    var d = parseInt(deg, 10);
+    if (d !== 0 && d !== 90 && d !== 180 && d !== 270) {
+      d = 0;
+    }
+    state.rotationDeg = d;
+    storageSet(STORAGE_KEYS.ROTATION, String(d));
+
+    var stage = document.getElementById("rotator-stage");
+    var scrollEl = document.getElementById("rotator-scroll");
+    var vw = window.innerWidth || document.documentElement.clientWidth || 600;
+    var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+
+    if (d === 0) {
+      removeClass(document.body, "is-rotated");
+      stage.style.width = "";
+      stage.style.height = "";
+      stage.style.left = "";
+      stage.style.top = "";
+      stage.style.webkitTransformOrigin = "";
+      stage.style.transformOrigin = "";
+      stage.style.webkitTransform = "";
+      stage.style.transform = "";
+      scrollEl.style.bottom = "";
+    } else {
+      addClass(document.body, "is-rotated");
+      if (d === 90) {
+        stage.style.width = vh + "px";
+        stage.style.height = vw + "px";
+        stage.style.left = vw + "px";
+        stage.style.top = "0px";
+        stage.style.webkitTransformOrigin = "0 0";
+        stage.style.transformOrigin = "0 0";
+        stage.style.webkitTransform = "rotate(90deg)";
+        stage.style.transform = "rotate(90deg)";
+      } else if (d === 270) {
+        stage.style.width = vh + "px";
+        stage.style.height = vw + "px";
+        stage.style.left = "0px";
+        stage.style.top = vh + "px";
+        stage.style.webkitTransformOrigin = "0 0";
+        stage.style.transformOrigin = "0 0";
+        stage.style.webkitTransform = "rotate(-90deg)";
+        stage.style.transform = "rotate(-90deg)";
+      } else {
+        stage.style.width = vw + "px";
+        stage.style.height = vh + "px";
+        stage.style.left = "0px";
+        stage.style.top = "0px";
+        stage.style.webkitTransformOrigin = "50% 50%";
+        stage.style.transformOrigin = "50% 50%";
+        stage.style.webkitTransform = "rotate(180deg)";
+        stage.style.transform = "rotate(180deg)";
+      }
+      updateRotatedInset();
+    }
+
+    if (autoAdjustLayout) {
+      var wantLandscape = (d === 90 || d === 270);
+      if (wantLandscape) {
+        addClass(document.body, "landscape-mode");
+      } else {
+        removeClass(document.body, "landscape-mode");
+      }
+      storageSet(STORAGE_KEYS.LANDSCAPE, wantLandscape ? "1" : "0");
+      updateRotatedInset();
+    }
+
+    var rotBtn = document.getElementById("btn-rotate-screen");
+    if (rotBtn) {
+      rotBtn.textContent = "Xoay: " + d + "°";
+      if (d !== 0) { addClass(rotBtn, "is-active"); } else { removeClass(rotBtn, "is-active"); }
+    }
+    updateEinkStatusPill();
+    syncSettingsModalUi();
   }
 
   function applyFontScale(scale) {
@@ -1761,6 +1854,7 @@
       removeClass(document.body, "font-" + FONT_SCALES[i]);
     }
     addClass(document.body, "font-" + scale);
+    updateRotatedInset();
     syncSettingsModalUi();
   }
 
@@ -1850,6 +1944,16 @@
         removeClass(fontBtns[i], "is-active");
       }
     }
+
+    var rotBtns = document.getElementById("settings-rotate-options").getElementsByTagName("button");
+    for (i = 0; i < rotBtns.length; i++) {
+      var deg = parseInt(rotBtns[i].getAttribute("data-rotate-deg"), 10);
+      if (deg === state.rotationDeg) {
+        addClass(rotBtns[i], "is-active");
+      } else {
+        removeClass(rotBtns[i], "is-active");
+      }
+    }
   }
 
   function renderCityModalList() {
@@ -1894,6 +1998,7 @@
 
     applyFontScale(storageGet(STORAGE_KEYS.FONT_SCALE, "md"));
     toggleZenMode(storageGet(STORAGE_KEYS.ZEN_MODE, "0") === "1");
+    applyRotation(storageGet(STORAGE_KEYS.ROTATION, "0"), false);
 
     state.rss.customFeeds = storageGetJson(STORAGE_KEYS.RSS_CUSTOM, []);
     state.rss.activeFeedId = findFeedById(storageGet(STORAGE_KEYS.RSS_ACTIVE, "vne-new")).id;
@@ -2157,6 +2262,12 @@
 
     // Thanh công cụ dưới cùng & Cài đặt E-Ink
     document.getElementById("btn-clean-ghost").onclick = function () { cleanGhosting(); };
+    document.getElementById("btn-rotate-screen").onclick = function () {
+      var order = [0, 90, 270, 180];
+      var idx = indexInArray(order, state.rotationDeg);
+      var nextDeg = order[(idx + 1) % order.length];
+      applyRotation(nextDeg, true);
+    };
     document.getElementById("btn-font-down").onclick = function () { stepFontScale(-1); };
     document.getElementById("btn-font-up").onclick = function () { stepFontScale(1); };
     document.getElementById("btn-toggle-invert").onclick = function () {
@@ -2166,6 +2277,7 @@
     document.getElementById("btn-toggle-layout").onclick = function () {
       var isLandscape = toggleClass(document.body, "landscape-mode");
       storageSet(STORAGE_KEYS.LANDSCAPE, isLandscape ? "1" : "0");
+      updateRotatedInset();
     };
 
     document.getElementById("btn-city-modal").onclick = function () {
@@ -2213,9 +2325,15 @@
       var sc = target ? target.getAttribute("data-font-scale") : null;
       if (sc) { applyFontScale(sc); }
     };
+    document.getElementById("settings-rotate-options").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      var deg = target ? target.getAttribute("data-rotate-deg") : null;
+      if (deg !== null) { applyRotation(parseInt(deg, 10), true); }
+    };
     document.getElementById("btn-setting-layout").onclick = function () {
       var isLandscape = toggleClass(document.body, "landscape-mode");
       storageSet(STORAGE_KEYS.LANDSCAPE, isLandscape ? "1" : "0");
+      updateRotatedInset();
     };
     document.getElementById("btn-setting-invert").onclick = function () {
       var isInvert = toggleClass(document.body, "invert-mode");
@@ -2224,6 +2342,12 @@
 
     document.getElementById("btn-help-modal").onclick = function () { openModal("help-modal"); };
     document.getElementById("btn-close-help").onclick = function () { closeModal("help-modal"); };
+
+    window.onresize = function () {
+      if (state.rotationDeg !== 0) {
+        applyRotation(state.rotationDeg, false);
+      }
+    };
   }
 
   function init() {

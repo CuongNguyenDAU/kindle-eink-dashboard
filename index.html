@@ -10,7 +10,9 @@
   <!-- Lớp phủ khử bóng mờ (ghosting) cho màn hình mực điện tử -->
   <div id="ghost-cleaner" aria-hidden="true"></div>
 
-  <div id="app" class="container">
+  <div id="rotator-stage">
+    <div id="rotator-scroll">
+      <div id="app" class="container">
     <!-- Thanh trạng thái trên cùng -->
     <header class="top-bar">
       <div class="top-bar-left">
@@ -197,21 +199,23 @@
         </div>
       </section>
     </main>
+      </div>
+    </div>
 
     <!-- Thanh điều khiển E-Ink cố định dưới cùng -->
-    <footer class="bottom-toolbar">
+    <footer class="bottom-toolbar" id="bottom-toolbar">
       <button type="button" class="btn toolbar-btn" id="btn-clean-ghost">Làm mới E-Ink</button>
+      <button type="button" class="btn toolbar-btn" id="btn-rotate-screen">Xoay: 0°</button>
       <button type="button" class="btn toolbar-btn" id="btn-zen-toolbar">Toàn màn hình</button>
       <button type="button" class="btn toolbar-btn" id="btn-rss-toolbar">Đọc báo RSS</button>
       <button type="button" class="btn toolbar-btn" id="btn-font-down">A-</button>
       <button type="button" class="btn toolbar-btn" id="btn-font-up">A+</button>
-      <button type="button" class="btn toolbar-btn" id="btn-toggle-layout">Ngang / Dọc</button>
+      <button type="button" class="btn toolbar-btn" id="btn-toggle-layout">1 / 2 Cột</button>
       <button type="button" class="btn toolbar-btn" id="btn-toggle-invert">Đen / Trắng</button>
       <button type="button" class="btn toolbar-btn" id="btn-city-modal">Thành phố</button>
       <button type="button" class="btn toolbar-btn" id="btn-settings-modal">Cài đặt E-Ink</button>
       <button type="button" class="btn toolbar-btn" id="btn-help-modal">Mẹo ~ds</button>
     </footer>
-  </div>
 
   <!-- Hộp thoại chọn thành phố -->
   <div id="city-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="city-modal-title">
@@ -260,9 +264,19 @@
       </div>
 
       <div class="settings-group">
-        <div class="settings-label">4. Bố cục &amp; Màu sắc:</div>
+        <div class="settings-label">4. Xoay hướng trang web (khi Kindle khóa màn hình dọc):</div>
+        <div class="settings-options" id="settings-rotate-options">
+          <button type="button" class="btn btn-small" data-rotate-deg="0">0° (Mặc định)</button>
+          <button type="button" class="btn btn-small" data-rotate-deg="90">90° (Ngang phải)</button>
+          <button type="button" class="btn btn-small" data-rotate-deg="270">270° (Ngang trái)</button>
+          <button type="button" class="btn btn-small" data-rotate-deg="180">180° (Lật ngược)</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">5. Bố cục &amp; Màu sắc:</div>
         <div class="settings-options">
-          <button type="button" class="btn btn-small" id="btn-setting-layout">Đổi Dọc / Ngang</button>
+          <button type="button" class="btn btn-small" id="btn-setting-layout">Đổi 1 / 2 Cột</button>
           <button type="button" class="btn btn-small" id="btn-setting-invert">Đảo Đen / Trắng</button>
         </div>
       </div>
@@ -350,6 +364,7 @@
         <p><strong>Lưu ý:</strong> Khi muốn Kindle tự ngủ lại như bình thường, chỉ cần giữ nút nguồn để <strong>Khởi động lại (Restart)</strong> máy.</p>
       </div>
     </div>
+  </div>
   </div>
 
   <script src="app.js"></script>

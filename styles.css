@@ -57,6 +57,54 @@ body.invert-mode #ghost-cleaner {
   background-color: #ffffff;
 }
 
+/* Khung xoay hướng màn hình cho Kindle */
+body.is-rotated {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+body.is-rotated #rotator-stage {
+  position: fixed;
+  overflow: hidden;
+  background-color: #ffffff;
+  z-index: 10;
+}
+
+body.invert-mode.is-rotated #rotator-stage {
+  background-color: #000000;
+}
+
+body.is-rotated #rotator-scroll {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 58px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.is-rotated .container {
+  padding-bottom: 24px;
+}
+
+body.is-rotated .bottom-toolbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+body.is-rotated .modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
 /* Khung bao tổng */
 .container {
   width: 100%;
