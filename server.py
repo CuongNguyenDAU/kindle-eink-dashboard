@@ -18,6 +18,7 @@ import ssl
 import sys
 import threading
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -81,9 +82,68 @@ def sanitize_filename(name):
     return f"{stamp}_{safe_base[:60]}{safe_ext}"
 
 
+_VN_DETACHED_MAP = {
+    ("ă", "grave"): "ằ", ("ă", "acute"): "ắ",
+    ("â", "grave"): "ầ", ("â", "acute"): "ấ",
+    ("ê", "grave"): "ề", ("ê", "acute"): "ế",
+    ("ô", "grave"): "ồ", ("ô", "acute"): "ố",
+    ("ơ", "grave"): "ờ", ("ơ", "acute"): "ớ",
+    ("ư", "grave"): "ừ", ("ư", "acute"): "ứ",
+    ("Ă", "grave"): "Ằ", ("Ă", "acute"): "Ắ",
+    ("Â", "grave"): "Ầ", ("Â", "acute"): "Ấ",
+    ("Ê", "grave"): "Ề", ("Ê", "acute"): "Ế",
+    ("Ô", "grave"): "Ồ", ("Ô", "acute"): "Ố",
+    ("Ơ", "grave"): "Ờ", ("Ơ", "acute"): "Ớ",
+    ("Ư", "grave"): "Ừ", ("Ư", "acute"): "Ứ",
+    ("a", "grave"): "à", ("a", "acute"): "á",
+    ("e", "grave"): "è", ("e", "acute"): "é",
+    ("i", "grave"): "ì", ("i", "acute"): "í",
+    ("o", "grave"): "ò", ("o", "acute"): "ó",
+    ("u", "grave"): "ù", ("u", "acute"): "ú",
+    ("y", "grave"): "ỳ", ("y", "acute"): "ý",
+    ("A", "grave"): "À", ("A", "acute"): "Á",
+    ("E", "grave"): "È", ("E", "acute"): "É",
+    ("I", "grave"): "Ì", ("I", "acute"): "Í",
+    ("O", "grave"): "Ò", ("O", "acute"): "Ó",
+    ("U", "grave"): "Ù", ("U", "acute"): "Ú",
+    ("Y", "grave"): "Ỳ", ("Y", "acute"): "Ý",
+}
+
+
+def normalize_vietnamese_text(text):
+    s = unicodedata.normalize("NFC", str(text or ""))
+    # Đưa dấu mũ/trăng/móc ra trước dấu thanh nếu bị đảo thứ tự tổ hợp
+    s = re.sub(r"([\u0300\u0301\u0303\u0309\u0323])([\u0302\u0306\u031B])", r"\2\1", s)
+    s = unicodedata.normalize("NFC", s)
+    # Ghép dấu sắc/huyền bị tách rời sau nguyên âm có mũ/móc
+    s = re.sub(
+        r"([ăâêôơưĂÂÊÔƠƯ])([`\u02CB\u2035\u00B4\u02CA\u2032])",
+        lambda m: _VN_DETACHED_MAP.get(
+            (m.group(1), "grave" if m.group(2) in "`\u02CB\u2035" else "acute"),
+            m.group(0),
+        ),
+        s,
+    )
+    # Ghép dấu sắc rời sau nguyên âm thường hoặc backtick đứng giữa từ
+    s = re.sub(
+        r"([aeiouyAEIOUY])([\u02CB\u2035\u00B4\u02CA\u2032])",
+        lambda m: _VN_DETACHED_MAP.get(
+            (m.group(1), "grave" if m.group(2) in "\u02CB\u2035" else "acute"),
+            m.group(0),
+        ),
+        s,
+    )
+    s = re.sub(
+        r"([aeiouyAEIOUY])`(?=[A-Za-zÀ-ỹ])",
+        lambda m: _VN_DETACHED_MAP.get((m.group(1), "grave"), m.group(0)),
+        s,
+    )
+    return s
+
+
 def text_lines_to_blocks(text, max_blocks=800):
     blocks = []
-    for raw_line in str(text or "").splitlines():
+    for raw_line in normalize_vietnamese_text(text).splitlines():
         line = re.sub(r"\s+", " ", raw_line).strip()
         if not line:
             continue
@@ -113,7 +173,7 @@ def extract_docx_blocks(raw_bytes):
             for t_el in p_el.iter(w_ns + "t"):
                 if t_el.text:
                     texts.append(t_el.text)
-            line = re.sub(r"\s+", " ", "".join(texts)).strip()
+            line = normalize_vietnamese_text(re.sub(r"\s+", " ", "".join(texts)).strip())
             if not line:
                 continue
             is_heading = False

@@ -152,6 +152,87 @@
     return txt.value;
   }
 
+  var VN_COMBINING_MAP = {
+    "a\u0300": "à", "a\u0301": "á", "a\u0303": "ã", "a\u0309": "ả", "a\u0323": "ạ",
+    "a\u0306": "ă", "a\u0302": "â",
+    "ă\u0300": "ằ", "ă\u0301": "ắ", "ă\u0303": "ẵ", "ă\u0309": "ẳ", "ă\u0323": "ặ",
+    "â\u0300": "ầ", "â\u0301": "ấ", "â\u0303": "ẫ", "â\u0309": "ẩ", "â\u0323": "ậ",
+    "e\u0300": "è", "e\u0301": "é", "e\u0303": "ẽ", "e\u0309": "ẻ", "e\u0323": "ẹ",
+    "e\u0302": "ê",
+    "ê\u0300": "ề", "ê\u0301": "ế", "ê\u0303": "ễ", "ê\u0309": "ể", "ê\u0323": "ệ",
+    "i\u0300": "ì", "i\u0301": "í", "i\u0303": "ĩ", "i\u0309": "ỉ", "i\u0323": "ị",
+    "o\u0300": "ò", "o\u0301": "ó", "o\u0303": "õ", "o\u0309": "ỏ", "o\u0323": "ọ",
+    "o\u0302": "ô", "o\u031B": "ơ",
+    "ô\u0300": "ồ", "ô\u0301": "ố", "ô\u0303": "ỗ", "ô\u0309": "ổ", "ô\u0323": "ộ",
+    "ơ\u0300": "ờ", "ơ\u0301": "ớ", "ơ\u0303": "ỡ", "ơ\u0309": "ở", "ơ\u0323": "ợ",
+    "u\u0300": "ù", "u\u0301": "ú", "u\u0303": "ũ", "u\u0309": "ủ", "u\u0323": "ụ",
+    "u\u031B": "ư",
+    "ư\u0300": "ừ", "ư\u0301": "ứ", "ư\u0303": "ữ", "ư\u0309": "ử", "ư\u0323": "ự",
+    "y\u0300": "ỳ", "y\u0301": "ý", "y\u0303": "ỹ", "y\u0309": "ỷ", "y\u0323": "ỵ",
+    "A\u0300": "À", "A\u0301": "Á", "A\u0303": "Ã", "A\u0309": "Ả", "A\u0323": "Ạ",
+    "A\u0306": "Ă", "A\u0302": "Â",
+    "Ă\u0300": "Ằ", "Ă\u0301": "Ắ", "Ă\u0303": "Ẵ", "Ă\u0309": "Ẳ", "Ă\u0323": "Ặ",
+    "Â\u0300": "Ầ", "Â\u0301": "Ấ", "Â\u0303": "Ẫ", "Â\u0309": "Ẩ", "Â\u0323": "Ậ",
+    "E\u0300": "È", "E\u0301": "É", "E\u0303": "Ẽ", "E\u0309": "Ẻ", "E\u0323": "Ẹ",
+    "E\u0302": "Ê",
+    "Ê\u0300": "Ề", "Ê\u0301": "Ế", "Ê\u0303": "Ễ", "Ê\u0309": "Ể", "Ê\u0323": "Ệ",
+    "I\u0300": "Ì", "I\u0301": "Í", "I\u0303": "Ĩ", "I\u0309": "Ỉ", "I\u0323": "Ị",
+    "O\u0300": "Ò", "O\u0301": "Ó", "O\u0303": "Õ", "O\u0309": "Ỏ", "O\u0323": "Ọ",
+    "O\u0302": "Ô", "O\u031B": "Ơ",
+    "Ô\u0300": "Ồ", "Ô\u0301": "Ố", "Ô\u0303": "Ỗ", "Ô\u0309": "Ổ", "Ô\u0323": "Ộ",
+    "Ơ\u0300": "Ờ", "Ơ\u0301": "Ớ", "Ơ\u0303": "Ỡ", "Ơ\u0309": "Ở", "Ơ\u0323": "Ợ",
+    "U\u0300": "Ù", "U\u0301": "Ú", "U\u0303": "Ũ", "U\u0309": "Ủ", "U\u0323": "Ụ",
+    "U\u031B": "Ư",
+    "Ư\u0300": "Ừ", "Ư\u0301": "Ứ", "Ư\u0303": "Ữ", "Ư\u0309": "Ử", "Ư\u0323": "Ự",
+    "Y\u0300": "Ỳ", "Y\u0301": "Ý", "Y\u0303": "Ỹ", "Y\u0309": "Ỷ", "Y\u0323": "Ỵ"
+  };
+
+  var VN_DETACHED_MAP = {
+    "ă_g": "ằ", "ă_a": "ắ", "â_g": "ầ", "â_a": "ấ",
+    "ê_g": "ề", "ê_a": "ế", "ô_g": "ồ", "ô_a": "ố",
+    "ơ_g": "ờ", "ơ_a": "ớ", "ư_g": "ừ", "ư_a": "ứ",
+    "Ă_g": "Ằ", "Ă_a": "Ắ", "Â_g": "Ầ", "Â_a": "Ấ",
+    "Ê_g": "Ề", "Ê_a": "Ế", "Ô_g": "Ồ", "Ô_a": "Ố",
+    "Ơ_g": "Ờ", "Ơ_a": "Ớ", "Ư_g": "Ừ", "Ư_a": "Ứ",
+    "a_g": "à", "a_a": "á", "e_g": "è", "e_a": "é",
+    "i_g": "ì", "i_a": "í", "o_g": "ò", "o_a": "ó",
+    "u_g": "ù", "u_a": "ú", "y_g": "ỳ", "y_a": "ý",
+    "A_g": "À", "A_a": "Á", "E_g": "È", "E_a": "É",
+    "I_g": "Ì", "I_a": "Í", "O_g": "Ò", "O_a": "Ó",
+    "U_g": "Ù", "U_a": "Ú", "Y_g": "Ỳ", "Y_a": "Ý"
+  };
+
+  function normalizeVietnameseText(str) {
+    var s = String(str || "");
+    if (!s) { return ""; }
+    // Đưa dấu mũ/trăng/móc ra trước dấu thanh nếu bị đảo thứ tự tổ hợp
+    s = s.replace(/([\u0300\u0301\u0303\u0309\u0323])([\u0302\u0306\u031B])/g, "$2$1");
+    if (typeof s.normalize === "function") {
+      try { s = s.normalize("NFC"); } catch (e) { /* fallback */ }
+    }
+    // Dự phòng gộp dấu tổ hợp cho trình duyệt Kindle cũ không có normalize()
+    s = s.replace(/[aeiouyAEIOUY][\u0302\u0306\u031B]/g, function (m) {
+      return VN_COMBINING_MAP[m] || m;
+    });
+    s = s.replace(/[aăâeêioôơuưyAĂÂEÊIOÔƠUƯY][\u0300\u0301\u0303\u0309\u0323]/g, function (m) {
+      return VN_COMBINING_MAP[m] || m;
+    });
+    // Sửa lỗi dấu huyền/sắc tách rời sau nguyên âm có mũ/móc (VD: dau huyen/sac roi -> Trần, Hắn)
+    s = s.replace(/([ăâêôơưĂÂÊÔƠƯ])([\u0060\u02CB\u2035\u00B4\u02CA\u2032])/g, function (m, ch, mark) {
+      var kind = (mark === "\u0060" || mark === "\u02CB" || mark === "\u2035") ? "_g" : "_a";
+      return VN_DETACHED_MAP[ch + kind] || m;
+    });
+    // Sửa dấu sắc/huyền tách rời sau nguyên âm thường
+    s = s.replace(/([aeiouyAEIOUY])([\u02CB\u2035\u00B4\u02CA\u2032])/g, function (m, ch, mark) {
+      var kind = (mark === "\u02CB" || mark === "\u2035") ? "_g" : "_a";
+      return VN_DETACHED_MAP[ch + kind] || m;
+    });
+    s = s.replace(/([aeiouyAEIOUY])\u0060(?=[A-Za-zÀ-ỹ])/g, function (m, ch) {
+      return VN_DETACHED_MAP[ch + "_g"] || m;
+    });
+    return s;
+  }
+
   function stripHtml(str) {
     var clean = String(str || "")
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -160,6 +241,7 @@
       .replace(/<\/p>/gi, "\n")
       .replace(/<[^>]+>/g, " ");
     clean = decodeEntities(clean);
+    clean = normalizeVietnameseText(clean);
     return clean.replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n").replace(/^\s+|\s+$/g, "");
   }
 
@@ -1445,16 +1527,18 @@
   function cloneArticleForStorage(art) {
     return {
       id: art.id,
-      title: art.title,
+      title: normalizeVietnameseText(art.title),
       link: art.link || "",
       pubDate: art.pubDate || "",
       pubText: art.pubText || "",
-      snippet: art.snippet || "",
+      snippet: normalizeVietnameseText(art.snippet || ""),
       rawContent: art.rawContent || "",
       sourceId: art.sourceId || "",
       sourceName: art.sourceName || "WEB E-INK",
       fullParagraphs: art.fullParagraphs || null,
       extractedLinks: art.extractedLinks || [],
+      prevChapterUrl: art.prevChapterUrl || "",
+      nextChapterUrl: art.nextChapterUrl || "",
       fileName: art.fileName || "",
       fileUrl: art.fileUrl || "",
       itemType: art.itemType || ""
@@ -1539,7 +1623,7 @@
   }
 
   function cleanMarkdownLine(line) {
-    var s = trimStr(line);
+    var s = normalizeVietnameseText(trimStr(line));
     // Bỏ hình ảnh markdown ![alt](url)
     s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
     // Chuyển link markdown [text](url) -> text
@@ -1554,36 +1638,209 @@
     var links = [];
     var seen = {};
     var normBase = String(baseUrl || "").replace(/\/$/, "");
-    var re = /(!?)\[([^\]]{4,140})\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+    var re = /(!?)\[([^\]]{1,140})\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
     var m;
     while ((m = re.exec(body)) !== null) {
       if (m[1] === "!") { continue; }
-      var label = trimStr(m[2].replace(/\s+/g, " "));
+      var label = normalizeVietnameseText(trimStr(m[2].replace(/\s+/g, " ")));
       var resolved = resolveRelativeUrl(m[3], baseUrl);
       if (!resolved || !/^https?:\/\//i.test(resolved)) { continue; }
       if (/\.(png|jpg|jpeg|gif|webp|svg|ico|css|js)(\?|$)/i.test(resolved)) { continue; }
       if (resolved.replace(/\/$/, "") === normBase) { continue; }
-      if (isBoilerplateLinkText(label)) { continue; }
       if (!seen[resolved]) {
         seen[resolved] = 1;
         links.push({ text: label, url: resolved });
-        if (links.length >= 15) { break; }
       }
     }
     return links;
   }
 
-  function parseJinaResponse(rawText, articleTitle, baseUrl) {
+  function filterReadableLinks(rawLinks, limit) {
+    var out = [];
+    var seen = {};
+    var i;
+    var maxCount = limit || 15;
+    for (i = 0; i < rawLinks.length; i++) {
+      var item = rawLinks[i];
+      if (!item || !item.url) { continue; }
+      var lbl = normalizeVietnameseText(trimStr(item.text || ""));
+      if (isBoilerplateLinkText(lbl)) { continue; }
+      if (!seen[item.url]) {
+        seen[item.url] = 1;
+        out.push({ text: lbl.slice(0, 110), url: item.url });
+        if (out.length >= maxCount) { break; }
+      }
+    }
+    return out;
+  }
+
+  function extractChapterNum(url, title) {
+    var mUrl = String(url || "").match(/(?:chuong|chapter|chap|ch)[-_\/=]?(\d+)/i);
+    if (mUrl && mUrl[1]) { return parseInt(mUrl[1], 10); }
+    var mTitle = normalizeVietnameseText(String(title || "")).match(/(?:chương|chapter|chap)\s+(\d+)/i);
+    if (mTitle && mTitle[1]) { return parseInt(mTitle[1], 10); }
+    return 0;
+  }
+
+  function detectChapterNavLinks(candidates, currentUrl, curTitle) {
+    var curNorm = String(currentUrl || "").split("#")[0].replace(/\/$/, "");
+    var hostMatch = String(currentUrl || "").match(/^https?:\/\/([^\/?#]+)/i);
+    var curHost = hostMatch ? hostMatch[1].toLowerCase() : "";
+    var curNum = extractChapterNum(currentUrl, curTitle);
+
+    var bestNext = "";
+    var bestNextScore = 0;
+    var bestPrev = "";
+    var bestPrevScore = 0;
+    var i;
+
+    for (i = 0; i < candidates.length; i++) {
+      var c = candidates[i];
+      if (!c || !c.url || !/^https?:\/\//i.test(c.url)) { continue; }
+      var candNorm = String(c.url).split("#")[0].replace(/\/$/, "");
+      if (!candNorm || candNorm === curNorm) { continue; }
+      if (/\.(png|jpg|jpeg|gif|webp|svg|ico|css|js)(\?|$)/i.test(candNorm)) { continue; }
+
+      var label = normalizeVietnameseText(trimStr(c.text || "")).toLowerCase();
+      var idCls = String(c.idCls || "").toLowerCase();
+      var rel = String(c.rel || "").toLowerCase();
+      var cHostM = candNorm.match(/^https?:\/\/([^\/?#]+)/i);
+      var sameHost = (!curHost || (cHostM && cHostM[1].toLowerCase() === curHost));
+      if (!sameHost) { continue; }
+
+      var isDisabled = (idCls.indexOf("disabled") !== -1 || idCls.indexOf("disable") !== -1);
+      if (isDisabled) { continue; }
+
+      var nextScore = 0;
+      var prevScore = 0;
+
+      if (rel === "next") { nextScore += 60; }
+      if (rel === "prev" || rel === "previous") { prevScore += 60; }
+
+      if (/(next[-_]?chap|chap[-_]?next|btn[-_]?next|next[-_]?chapter|nextchapter|chapter[-_]?next)/i.test(idCls)) {
+        nextScore += 70;
+      }
+      if (/(prev[-_]?chap|chap[-_]?prev|btn[-_]?prev|prev[-_]?chapter|prevchapter|chapter[-_]?prev)/i.test(idCls)) {
+        prevScore += 70;
+      }
+
+      if (/(chương tiếp|chương sau|chương kế|chap tiếp|chap sau|next chapter|next chap|tiếp theo|kế tiếp)/i.test(label)) {
+        nextScore += 80;
+      } else if (/^(tiếp|sau|next|chương mới|»|›|>|tiếp >>|sau >|chương >>)$/i.test(label)) {
+        nextScore += 65;
+      }
+
+      if (/(chương trước|chap trước|quay lại chương|previous chapter|prev chapter|prev chap)/i.test(label)) {
+        prevScore += 80;
+      } else if (/^(trước|prev|previous|«|‹|<|<< trước|<< chương)$/i.test(label)) {
+        prevScore += 65;
+      }
+
+      if (curNum > 0) {
+        var linkNum = extractChapterNum(candNorm, "");
+        if (linkNum === curNum + 1 && !/(trước|prev|mục lục|danh sách)/i.test(label)) {
+          nextScore += 55;
+        } else if (linkNum === curNum - 1 && !/(tiếp|sau|next|mục lục|danh sách)/i.test(label)) {
+          prevScore += 55;
+        }
+      }
+
+      if (nextScore > bestNextScore && prevScore === 0) {
+        bestNextScore = nextScore;
+        bestNext = c.url;
+      }
+      if (prevScore > bestPrevScore && nextScore === 0) {
+        bestPrevScore = prevScore;
+        bestPrev = c.url;
+      }
+    }
+
+    return {
+      prevChapterUrl: bestPrev,
+      nextChapterUrl: bestNext
+    };
+  }
+
+  function inferChapterNavFromUrl(currentUrl) {
+    var prevUrl = "";
+    var nextUrl = "";
+    var urlStr = String(currentUrl || "");
+    var mPath = urlStr.match(/^(https?:\/\/.*?(?:chuong|chapter|chap|ch)[-_\/]?)(\d+)(\/?(?:\.html?)?(?:\?[^#]*)?)$/i);
+    if (mPath && mPath[2]) {
+      var n = parseInt(mPath[2], 10);
+      var padLen = (mPath[2].length > 1 && mPath[2].charAt(0) === "0") ? mPath[2].length : 0;
+      var fmtNum = function (v) {
+        var s = String(v);
+        while (padLen > 0 && s.length < padLen) { s = "0" + s; }
+        return s;
+      };
+      if (n > 1) { prevUrl = mPath[1] + fmtNum(n - 1) + mPath[3]; }
+      nextUrl = mPath[1] + fmtNum(n + 1) + mPath[3];
+      return { prevChapterUrl: prevUrl, nextChapterUrl: nextUrl };
+    }
+    var mQuery = urlStr.match(/^(https?:\/\/[^?#]+\?[^#]*?(?:chuong|chapter|chap|c)=)(\d+)((?:&[^#]*)?)$/i);
+    if (mQuery && mQuery[2]) {
+      var qn = parseInt(mQuery[2], 10);
+      if (qn > 1) { prevUrl = mQuery[1] + String(qn - 1) + mQuery[3]; }
+      nextUrl = mQuery[1] + String(qn + 1) + mQuery[3];
+    }
+    return { prevChapterUrl: prevUrl, nextChapterUrl: nextUrl };
+  }
+
+  function collectJinaSummaryLinks(linksObj, baseUrl) {
+    var arr = [];
+    if (!linksObj) { return arr; }
+    if (linksObj instanceof Array) {
+      var i;
+      for (i = 0; i < linksObj.length; i++) {
+        var item = linksObj[i];
+        var lbl = "";
+        var rawUrl = "";
+        if (item instanceof Array) {
+          lbl = item[0] || "";
+          rawUrl = item[1] || "";
+        } else if (item && typeof item === "object") {
+          lbl = item.text || item.title || item.label || "";
+          rawUrl = item.url || item.href || "";
+        }
+        var resUrl = resolveRelativeUrl(rawUrl, baseUrl);
+        if (resUrl) {
+          arr.push({ text: normalizeVietnameseText(lbl), url: resUrl });
+        }
+      }
+      return arr;
+    }
+    var k;
+    for (k in linksObj) {
+      if (linksObj.hasOwnProperty(k)) {
+        var val = linksObj[k];
+        var urlVal = typeof val === "string" ? val : (val && (val.url || val.href) ? (val.url || val.href) : "");
+        var txtVal = typeof val === "string" ? k : (val && (val.text || val.title) ? (val.text || val.title) : k);
+        var resolved = resolveRelativeUrl(urlVal, baseUrl);
+        if (resolved) {
+          arr.push({ text: normalizeVietnameseText(txtVal), url: resolved });
+        }
+      }
+    }
+    return arr;
+  }
+
+  function parseJinaResponse(rawText, articleTitle, baseUrl, summaryLinksObj) {
     var jinaTitle = "";
     var titleMatch = String(rawText || "").match(/^Title:\s*(.+)$/m);
     if (titleMatch && titleMatch[1]) {
-      jinaTitle = trimStr(titleMatch[1]);
+      jinaTitle = normalizeVietnameseText(trimStr(titleMatch[1]));
     }
 
     var marker = "Markdown Content:";
     var idx = rawText.indexOf(marker);
     var body = idx !== -1 ? rawText.slice(idx + marker.length) : rawText;
-    var links = extractLinksFromMarkdown(body, baseUrl);
+    var rawBodyLinks = extractLinksFromMarkdown(body, baseUrl);
+    var summaryLinks = collectJinaSummaryLinks(summaryLinksObj, baseUrl);
+    var allCandidates = rawBodyLinks.concat(summaryLinks);
+    var nav = detectChapterNavLinks(allCandidates, baseUrl, jinaTitle || articleTitle);
+    var links = filterReadableLinks(allCandidates, 15);
+
     var lines = body.split(/\r?\n/);
     var blocks = [];
     var totalChars = 0;
@@ -1608,9 +1865,9 @@
         rawLine = rawLine.replace(/^([\*\-\+]|\d+\.)\s+/, "");
       }
 
-      var cleaned = cleanMarkdownLine(rawLine);
+      var cleaned = normalizeVietnameseText(cleanMarkdownLine(rawLine));
       if (!cleaned) { continue; }
-      if (blocks.length === 0 && articleTitle && cleaned === trimStr(articleTitle)) {
+      if (blocks.length === 0 && articleTitle && cleaned === trimStr(normalizeVietnameseText(articleTitle))) {
         continue;
       }
       if (bType !== "h" && cleaned.length < 25 && (
@@ -1643,7 +1900,9 @@
     return {
       title: jinaTitle,
       blocks: blocks,
-      links: links
+      links: links,
+      prevChapterUrl: nav.prevChapterUrl,
+      nextChapterUrl: nav.nextChapterUrl
     };
   }
 
@@ -1667,6 +1926,43 @@
         }
       }
     } catch (e) { /* ignore */ }
+  }
+
+  function collectHtmlChapterCandidates(doc, pageUrl) {
+    var candidates = [];
+    if (!doc) { return candidates; }
+    try {
+      var headLinks = doc.querySelectorAll("link[rel='next'], link[rel='prev'], link[rel='previous']");
+      var hi;
+      for (hi = 0; hi < headLinks.length; hi++) {
+        var hl = headLinks[hi];
+        var hUrl = resolveRelativeUrl(hl.getAttribute("href") || "", pageUrl);
+        if (hUrl) {
+          candidates.push({
+            text: "",
+            url: hUrl,
+            idCls: "",
+            rel: hl.getAttribute("rel") || ""
+          });
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    var anchors = doc.getElementsByTagName("a");
+    var ai;
+    for (ai = 0; ai < anchors.length; ai++) {
+      var a = anchors[ai];
+      var resolved = resolveRelativeUrl(a.getAttribute("href") || "", pageUrl);
+      if (!resolved || !/^https?:\/\//i.test(resolved)) { continue; }
+      var lbl = normalizeVietnameseText(trimStr((a.textContent || a.getAttribute("title") || a.getAttribute("aria-label") || "").replace(/\s+/g, " ")));
+      candidates.push({
+        text: lbl,
+        url: resolved,
+        idCls: (a.id || "") + " " + (a.className || ""),
+        rel: a.getAttribute("rel") || ""
+      });
+    }
+    return candidates;
   }
 
   function parseHtmlToArticle(htmlStr, pageUrl) {
@@ -1694,18 +1990,21 @@
         var pl = trimStr(plainLines[pi]);
         if (pl.length > 20) { plainBlocks.push({ type: "p", text: pl }); }
       }
-      return { title: "", blocks: plainBlocks, links: [] };
+      return { title: "", blocks: plainBlocks, links: [], prevChapterUrl: "", nextChapterUrl: "" };
     }
 
     var pageTitle = "";
     var h1El = doc.querySelector("h1");
-    if (h1El) { pageTitle = trimStr(h1El.textContent || ""); }
-    if (!pageTitle && doc.title) { pageTitle = trimStr(doc.title); }
+    if (h1El) { pageTitle = normalizeVietnameseText(trimStr(h1El.textContent || "")); }
+    if (!pageTitle && doc.title) { pageTitle = normalizeVietnameseText(trimStr(doc.title)); }
+
+    var navCandidates = collectHtmlChapterCandidates(doc, pageUrl);
+    var nav = detectChapterNavLinks(navCandidates, pageUrl, pageTitle);
 
     var selectors = [
       "article", "main", "[role='main']", ".fck_detail", "#main-detail",
       ".singular-content", ".detail-content", ".post-content",
-      ".article-content", ".entry-content", "#content"
+      ".article-content", ".entry-content", ".chapter-c", "#chapter-c", "#content"
     ];
     var root = null;
     var si;
@@ -1732,7 +2031,7 @@
       var ai;
       for (ai = 0; ai < anchors.length; ai++) {
         var a = anchors[ai];
-        var txt = trimStr((a.textContent || "").replace(/\s+/g, " "));
+        var txt = normalizeVietnameseText(trimStr((a.textContent || "").replace(/\s+/g, " ")));
         var resolved = resolveRelativeUrl(a.getAttribute("href") || "", pageUrl);
         if (!resolved || !/^https?:\/\//i.test(resolved)) { continue; }
         if (/\.(png|jpg|jpeg|gif|webp|svg|ico|css|js)(\?|$)/i.test(resolved)) { continue; }
@@ -1776,7 +2075,7 @@
           var c;
           var maxCols = cells.length < 8 ? cells.length : 8;
           for (c = 0; c < maxCols; c++) {
-            rowVals.push(trimStr((cells[c].textContent || "").replace(/\s+/g, " ")));
+            rowVals.push(normalizeVietnameseText(trimStr((cells[c].textContent || "").replace(/\s+/g, " "))));
           }
           if (rowVals.length > 0) {
             rows.push(rowVals);
@@ -1789,7 +2088,7 @@
         continue;
       }
 
-      var txtVal = trimStr((node.textContent || "").replace(/\s+/g, " "));
+      var txtVal = normalizeVietnameseText(trimStr((node.textContent || "").replace(/\s+/g, " ")));
       if (!txtVal) { continue; }
       if (blocks.length === 0 && pageTitle && txtVal === pageTitle && (tag === "h1" || tag === "h2")) {
         continue;
@@ -1822,11 +2121,35 @@
       title: pageTitle,
       blocks: blocks,
       links: links,
+      prevChapterUrl: nav.prevChapterUrl,
+      nextChapterUrl: nav.nextChapterUrl,
       totalChars: totalChars
     };
   }
 
-  function fetchHtmlViaProxies(url, candidates, index, onDone) {
+  function buildProxyCandidates(url) {
+    var candidates = [];
+    if (state.pcSync.lanAvailable) {
+      candidates.push({
+        kind: "lan",
+        label: "LAN Proxy",
+        endpoint: "/api/extract?url=" + encodeURIComponent(url)
+      });
+    }
+    candidates.push({
+      kind: "allorigins",
+      label: "AllOrigins",
+      endpoint: "https://api.allorigins.win/get?url=" + encodeURIComponent(url)
+    });
+    candidates.push({
+      kind: "codetabs",
+      label: "CodeTabs",
+      endpoint: "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url)
+    });
+    return candidates;
+  }
+
+  function fetchHtmlViaProxies(url, candidates, index, onDone, navOnly) {
     if (index >= candidates.length) {
       onDone({ ok: false });
       return;
@@ -1862,24 +2185,35 @@
 
         if (htmlStr && htmlStr.length > 80) {
           var parsed = parseHtmlToArticle(htmlStr, finalUrl);
-          if ((parsed.blocks && parsed.blocks.length >= 2) || (parsed.totalChars && parsed.totalChars >= 100) || (parsed.links && parsed.links.length >= 3)) {
+          if (navOnly) {
+            if (parsed.prevChapterUrl || parsed.nextChapterUrl) {
+              onDone({
+                ok: true,
+                prevChapterUrl: parsed.prevChapterUrl,
+                nextChapterUrl: parsed.nextChapterUrl
+              });
+              return;
+            }
+          } else if ((parsed.blocks && parsed.blocks.length >= 2) || (parsed.totalChars && parsed.totalChars >= 100) || (parsed.links && parsed.links.length >= 3)) {
             onDone({
               ok: true,
               title: parsed.title,
               blocks: parsed.blocks,
               links: parsed.links,
+              prevChapterUrl: parsed.prevChapterUrl,
+              nextChapterUrl: parsed.nextChapterUrl,
               via: cand.label
             });
             return;
           }
         }
       }
-      fetchHtmlViaProxies(url, candidates, index + 1, onDone);
+      fetchHtmlViaProxies(url, candidates, index + 1, onDone, navOnly);
     };
 
-    xhr.ontimeout = function () { fetchHtmlViaProxies(url, candidates, index + 1, onDone); };
-    xhr.onerror = function () { fetchHtmlViaProxies(url, candidates, index + 1, onDone); };
-    try { xhr.send(); } catch (e) { fetchHtmlViaProxies(url, candidates, index + 1, onDone); }
+    xhr.ontimeout = function () { fetchHtmlViaProxies(url, candidates, index + 1, onDone, navOnly); };
+    xhr.onerror = function () { fetchHtmlViaProxies(url, candidates, index + 1, onDone, navOnly); };
+    try { xhr.send(); } catch (e) { fetchHtmlViaProxies(url, candidates, index + 1, onDone, navOnly); }
   }
 
   function extractWebPageContent(url, currentTitle, onDone) {
@@ -1888,29 +2222,12 @@
     xhr.open("GET", jinaUrl, true);
     try {
       xhr.setRequestHeader("Accept", "application/json");
+      xhr.setRequestHeader("X-With-Links-Summary", "true");
     } catch (e) { /* bỏ qua nếu trình duyệt cũ không cho phép */ }
     xhr.timeout = 14000;
 
     function runHtmlFallback() {
-      var candidates = [];
-      if (state.pcSync.lanAvailable) {
-        candidates.push({
-          kind: "lan",
-          label: "LAN Proxy",
-          endpoint: "/api/extract?url=" + encodeURIComponent(url)
-        });
-      }
-      candidates.push({
-        kind: "allorigins",
-        label: "AllOrigins",
-        endpoint: "https://api.allorigins.win/get?url=" + encodeURIComponent(url)
-      });
-      candidates.push({
-        kind: "codetabs",
-        label: "CodeTabs",
-        endpoint: "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url)
-      });
-      fetchHtmlViaProxies(url, candidates, 0, onDone);
+      fetchHtmlViaProxies(url, buildProxyCandidates(url), 0, onDone, false);
     }
 
     xhr.onreadystatechange = function () {
@@ -1918,21 +2235,25 @@
       if (xhr.status >= 200 && xhr.status < 300 && xhr.responseText) {
         var mdText = xhr.responseText;
         var jsonTitle = "";
+        var summaryLinksObj = null;
         try {
           var jsonRes = JSON.parse(xhr.responseText);
           if (jsonRes && jsonRes.data && jsonRes.data.content) {
             mdText = jsonRes.data.content;
-            jsonTitle = trimStr(jsonRes.data.title || "");
+            jsonTitle = normalizeVietnameseText(trimStr(jsonRes.data.title || ""));
+            summaryLinksObj = jsonRes.data.links || null;
           }
         } catch (e) { /* giữ nguyên dạng văn bản thô */ }
 
-        var parsed = parseJinaResponse(mdText, currentTitle, url);
+        var parsed = parseJinaResponse(mdText, currentTitle, url, summaryLinksObj);
         if (parsed && parsed.blocks && parsed.blocks.length > 0) {
           onDone({
             ok: true,
             title: jsonTitle || parsed.title,
             blocks: parsed.blocks,
             links: parsed.links,
+            prevChapterUrl: parsed.prevChapterUrl,
+            nextChapterUrl: parsed.nextChapterUrl,
             via: "Jina Reader"
           });
           return;
@@ -2046,12 +2367,13 @@
     var i;
     for (i = 0; i < renderBlocks.length; i++) {
       var b = renderBlocks[i];
+      var bText = normalizeVietnameseText(b.text || "");
       if (b.type === "li") {
         if (!inList) {
           html += "<ul>";
           inList = true;
         }
-        html += "<li>" + escapeHtml(b.text) + "</li>";
+        html += "<li>" + escapeHtml(bText) + "</li>";
         continue;
       }
       if (inList) {
@@ -2059,9 +2381,9 @@
         inList = false;
       }
       if (b.type === "h") {
-        html += '<h3 class="article-subhead">' + escapeHtml(b.text) + "</h3>";
+        html += '<h3 class="article-subhead">' + escapeHtml(bText) + "</h3>";
       } else if (b.type === "q") {
-        html += "<blockquote>" + escapeHtml(b.text) + "</blockquote>";
+        html += "<blockquote>" + escapeHtml(bText) + "</blockquote>";
       } else if (b.type === "table" && b.rows) {
         html += '<div class="article-table-wrap"><table class="article-table">';
         var r, c;
@@ -2069,19 +2391,67 @@
           html += "<tr>";
           var cellTag = (r === 0) ? "th" : "td";
           for (c = 0; c < b.rows[r].length; c++) {
-            html += "<" + cellTag + ">" + escapeHtml(b.rows[r][c]) + "</" + cellTag + ">";
+            html += "<" + cellTag + ">" + escapeHtml(normalizeVietnameseText(b.rows[r][c])) + "</" + cellTag + ">";
           }
           html += "</tr>";
         }
         html += "</table></div>";
       } else {
-        html += "<p>" + escapeHtml(b.text) + "</p>";
+        html += "<p>" + escapeHtml(bText) + "</p>";
       }
     }
     if (inList) {
       html += "</ul>";
     }
     return html;
+  }
+
+  function findFeedIndexForArticle(art) {
+    if (!art || state.rss.filteredItems.length === 0) { return -1; }
+    var i;
+    for (i = 0; i < state.rss.filteredItems.length; i++) {
+      if (state.rss.filteredItems[i].id === art.id) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function updateChapterNavButtons(art) {
+    var topPrev = document.getElementById("btn-article-chap-prev");
+    var topNext = document.getElementById("btn-article-chap-next");
+    var footPrev = document.getElementById("btn-article-item-prev");
+    var footNext = document.getElementById("btn-article-item-next");
+
+    var hasPrevChap = Boolean(art && art.prevChapterUrl);
+    var hasNextChap = Boolean(art && art.nextChapterUrl);
+
+    if (topPrev) { topPrev.style.display = hasPrevChap ? "inline-block" : "none"; }
+    if (topNext) { topNext.style.display = hasNextChap ? "inline-block" : "none"; }
+
+    var feedIdx = findFeedIndexForArticle(art);
+    if (hasPrevChap || hasNextChap || (art && art.link && feedIdx === -1)) {
+      if (footPrev) {
+        footPrev.textContent = "◀ Chương trước";
+        footPrev.style.display = hasPrevChap ? "inline-block" : "none";
+      }
+      if (footNext) {
+        footNext.textContent = "Chương tiếp ▶";
+        footNext.style.display = hasNextChap ? "inline-block" : "none";
+      }
+    } else if (feedIdx !== -1) {
+      if (footPrev) {
+        footPrev.textContent = "◀ Bài trước";
+        footPrev.style.display = (feedIdx > 0) ? "inline-block" : "none";
+      }
+      if (footNext) {
+        footNext.textContent = "Bài tiếp ▶";
+        footNext.style.display = (feedIdx < state.rss.filteredItems.length - 1) ? "inline-block" : "none";
+      }
+    } else {
+      if (footPrev) { footPrev.style.display = "none"; }
+      if (footNext) { footNext.style.display = "none"; }
+    }
   }
 
   function renderArticleReader() {
@@ -2125,6 +2495,7 @@
 
     contentEl.innerHTML = renderArticleBlocksHtml(renderBlocks);
     renderArticleLinksBox(art);
+    updateChapterNavButtons(art);
     document.getElementById("article-modal").scrollTop = 0;
   }
 
@@ -2134,6 +2505,8 @@
       state.rss.savedList[savedIdx].title = art.title;
       state.rss.savedList[savedIdx].fullParagraphs = art.fullParagraphs;
       state.rss.savedList[savedIdx].extractedLinks = art.extractedLinks || [];
+      state.rss.savedList[savedIdx].prevChapterUrl = art.prevChapterUrl || "";
+      state.rss.savedList[savedIdx].nextChapterUrl = art.nextChapterUrl || "";
       storageSet(STORAGE_KEYS.RSS_SAVED, JSON.stringify(state.rss.savedList));
     }
     var i;
@@ -2143,11 +2516,43 @@
         state.pcSync.inboxList[i].title = art.title;
         state.pcSync.inboxList[i].fullParagraphs = art.fullParagraphs;
         state.pcSync.inboxList[i].extractedLinks = art.extractedLinks || [];
+        state.pcSync.inboxList[i].prevChapterUrl = art.prevChapterUrl || "";
+        state.pcSync.inboxList[i].nextChapterUrl = art.nextChapterUrl || "";
         updatedInbox = true;
       }
     }
     if (updatedInbox) {
       storageSet(STORAGE_KEYS.PC_INBOX, JSON.stringify(state.pcSync.inboxList));
+    }
+  }
+
+  function applyChapterNavFallbackAndProbe(art) {
+    if (!art || !art.link || !/^https?:\/\//i.test(art.link)) { return; }
+    // Tầng 2: suy luận nếu URL có dạng số chương thuần túy (chuong-243, chuong-243.html)
+    var inferred = inferChapterNavFromUrl(art.link);
+    if (!art.prevChapterUrl && inferred.prevChapterUrl) {
+      art.prevChapterUrl = inferred.prevChapterUrl;
+    }
+    if (!art.nextChapterUrl && inferred.nextChapterUrl) {
+      art.nextChapterUrl = inferred.nextChapterUrl;
+    }
+    updateChapterNavButtons(art);
+
+    // Tầng 3: nếu vẫn thiếu link chương hoặc URL có slug dài, dò ngầm HTML gốc để lấy link chính xác
+    var hasLongSlug = /(?:chuong|chapter|chap|ch)[-_\/]?\d+[-_][a-z]/i.test(art.link);
+    if (art._navProbed) { return; }
+    if (!art.nextChapterUrl || !art.prevChapterUrl || hasLongSlug) {
+      art._navProbed = true;
+      fetchHtmlViaProxies(art.link, buildProxyCandidates(art.link), 0, function (navRes) {
+        if (navRes && navRes.ok) {
+          if (navRes.prevChapterUrl) { art.prevChapterUrl = navRes.prevChapterUrl; }
+          if (navRes.nextChapterUrl) { art.nextChapterUrl = navRes.nextChapterUrl; }
+          syncExtractedBackToStores(art);
+          if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
+            updateChapterNavButtons(art);
+          }
+        }
+      }, true);
     }
   }
 
@@ -2162,17 +2567,20 @@
     extractWebPageContent(art.link, art.title, function (res) {
       if (res && res.ok && res.blocks && res.blocks.length > 0) {
         if (res.title && (!art.title || art.title === art.link || art.title.indexOf("http") === 0)) {
-          art.title = res.title;
+          art.title = normalizeVietnameseText(res.title);
         }
         art.fullParagraphs = res.blocks;
         art.extractedLinks = res.links || [];
+        if (res.prevChapterUrl) { art.prevChapterUrl = res.prevChapterUrl; }
+        if (res.nextChapterUrl) { art.nextChapterUrl = res.nextChapterUrl; }
         syncExtractedBackToStores(art);
 
         if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
           state.rss.articlePageIndex = 0;
-          document.getElementById("article-title").textContent = art.title;
+          document.getElementById("article-title").textContent = normalizeVietnameseText(art.title);
           statusEl.textContent = "Đã tải toàn văn qua " + res.via + " (" + res.blocks.length + " đoạn · sạch quảng cáo).";
           renderArticleReader();
+          applyChapterNavFallbackAndProbe(art);
         }
         return;
       }
@@ -2184,6 +2592,7 @@
 
   function openArticleObject(art, options) {
     if (!art) { return; }
+    art.title = normalizeVietnameseText(art.title || "");
     var opts = options || {};
     if (opts.pushHistory && state.rss.activeArticle && state.rss.activeArticle.id !== art.id) {
       state.rss.readerHistory.push(state.rss.activeArticle);
@@ -2243,6 +2652,9 @@
     if (art.fullParagraphs && art.fullParagraphs.length > 0) {
       statusEl.textContent = "Đang đọc nội dung sạch (" + art.fullParagraphs.length + " đoạn).";
       renderArticleReader();
+      if (art.link && /^https?:\/\//i.test(art.link)) {
+        applyChapterNavFallbackAndProbe(art);
+      }
     } else if (art.link && /^https?:\/\//i.test(art.link)) {
       statusEl.textContent = "Đang chuẩn bị và tự động trích xuất toàn văn...";
       renderArticleReader();
@@ -2288,7 +2700,7 @@
 
     var art = existing || {
       id: "web::" + url,
-      title: optionalTitle || url,
+      title: normalizeVietnameseText(optionalTitle || url),
       link: url,
       pubDate: "",
       pubText: "Đọc Web E-Ink",
@@ -2297,7 +2709,9 @@
       sourceId: "web-reader",
       sourceName: "WEB E-INK",
       fullParagraphs: null,
-      extractedLinks: []
+      extractedLinks: [],
+      prevChapterUrl: "",
+      nextChapterUrl: ""
     };
 
     openArticleObject(art, {
@@ -2306,15 +2720,21 @@
     });
   }
 
+  function openChapterDirection(delta) {
+    var art = state.rss.activeArticle;
+    if (!art) { return; }
+    var targetUrl = delta < 0 ? art.prevChapterUrl : art.nextChapterUrl;
+    if (targetUrl) {
+      openWebUrlInReader(targetUrl, true, delta < 0 ? "Chương trước" : "Chương tiếp");
+    }
+  }
+
   function navigateArticleInFeed(delta) {
-    if (!state.rss.activeArticle || state.rss.filteredItems.length === 0) { return; }
-    var idx = -1;
-    var i;
-    for (i = 0; i < state.rss.filteredItems.length; i++) {
-      if (state.rss.filteredItems[i].id === state.rss.activeArticle.id) {
-        idx = i;
-        break;
-      }
+    if (!state.rss.activeArticle) { return; }
+    var idx = findFeedIndexForArticle(state.rss.activeArticle);
+    if (state.rss.activeArticle.prevChapterUrl || state.rss.activeArticle.nextChapterUrl || (state.rss.activeArticle.link && idx === -1)) {
+      openChapterDirection(delta);
+      return;
     }
     if (idx === -1) { return; }
     var nextIdx = idx + delta;
@@ -2631,16 +3051,18 @@
   function normalizeCloudItem(rawObj, fallbackId, fallbackPub) {
     return {
       id: rawObj.id || ("ntfy-" + fallbackId),
-      title: rawObj.title || rawObj.fileName || rawObj.link || "Nội dung từ PC",
+      title: normalizeVietnameseText(rawObj.title || rawObj.fileName || rawObj.link || "Nội dung từ PC"),
       link: rawObj.link || "",
       pubDate: rawObj.pubDate || "",
       pubText: rawObj.pubText || fallbackPub || formatPcNowText(),
-      snippet: rawObj.snippet || "",
+      snippet: normalizeVietnameseText(rawObj.snippet || ""),
       rawContent: rawObj.rawContent || "",
       sourceId: "pc-sync",
       sourceName: rawObj.sourceName || "Từ PC (Cloud)",
       fullParagraphs: rawObj.fullParagraphs || null,
       extractedLinks: rawObj.extractedLinks || [],
+      prevChapterUrl: rawObj.prevChapterUrl || "",
+      nextChapterUrl: rawObj.nextChapterUrl || "",
       fileName: rawObj.fileName || "",
       fileUrl: rawObj.fileUrl || "",
       itemType: rawObj.itemType || "link"
@@ -2652,7 +3074,7 @@
       var parsed = parseHtmlToArticle(rawText, "");
       return parsed.blocks || [];
     }
-    var lines = String(rawText || "").split(/\r?\n/);
+    var lines = normalizeVietnameseText(rawText).split(/\r?\n/);
     var blocks = [];
     var i;
     for (i = 0; i < lines.length; i++) {
@@ -3025,6 +3447,8 @@
           sourceName: state.pcSync.lanAvailable ? "Từ PC (LAN)" : "Từ PC (Cloud)",
           fullParagraphs: hasBlocks ? res.blocks : null,
           extractedLinks: (res && res.links) ? res.links : [],
+          prevChapterUrl: (res && res.prevChapterUrl) ? res.prevChapterUrl : "",
+          nextChapterUrl: (res && res.nextChapterUrl) ? res.nextChapterUrl : "",
           fileName: "",
           fileUrl: "",
           itemType: "link"
@@ -3114,7 +3538,7 @@
             texts.push(ch.textContent);
           }
         }
-        var line = trimStr(texts.join("").replace(/\s+/g, " "));
+        var line = normalizeVietnameseText(trimStr(texts.join("").replace(/\s+/g, " ")));
         if (line) {
           blocks.push({ type: isHeading ? "h" : "p", text: line });
           if (blocks.length >= 1200) { break; }
@@ -3935,6 +4359,8 @@
     document.getElementById("btn-article-fetch-full").onclick = function () {
       if (state.rss.activeArticle) { fetchArticleFullText(state.rss.activeArticle); }
     };
+    document.getElementById("btn-article-chap-prev").onclick = function () { openChapterDirection(-1); };
+    document.getElementById("btn-article-chap-next").onclick = function () { openChapterDirection(1); };
     document.getElementById("btn-article-mode-toggle").onclick = function () {
       state.rss.articleMode = (state.rss.articleMode === "page") ? "scroll" : "page";
       storageSet(STORAGE_KEYS.RSS_PAGE_MODE, state.rss.articleMode);
@@ -3950,6 +4376,8 @@
       if (state.rss.articlePageIndex < state.rss.articlePages.length - 1) {
         state.rss.articlePageIndex += 1;
         renderArticleReader();
+      } else if (state.rss.activeArticle && state.rss.activeArticle.nextChapterUrl) {
+        openChapterDirection(1);
       }
     };
     document.getElementById("btn-article-item-prev").onclick = function () { navigateArticleInFeed(-1); };
