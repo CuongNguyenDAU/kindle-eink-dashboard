@@ -21,7 +21,7 @@ html,
 body {
   background-color: #ffffff;
   color: #000000;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "Times New Roman", Arial, Helvetica, serif;
   font-size: 16px;
   line-height: 1.45;
   width: 100%;
@@ -222,9 +222,56 @@ body.zen-mode .col-left {
 
 body.zen-mode .col-right,
 body.zen-mode .pomodoro-card,
-body.zen-mode .hourly-section,
-body.zen-mode .weather-forecast {
+body.zen-mode .weather-card {
   display: none;
+}
+
+.zen-weather-brief {
+  display: none;
+}
+
+body.zen-mode .zen-weather-brief {
+  display: block;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 2px solid #000000;
+}
+
+body.invert-mode.zen-mode .zen-weather-brief {
+  border-top-color: #ffffff;
+}
+
+.zen-weather-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.zen-weather-icon svg {
+  width: 34px;
+  height: 34px;
+  stroke: #000000;
+  fill: none;
+  vertical-align: middle;
+}
+
+body.invert-mode .zen-weather-icon svg {
+  stroke: #ffffff;
+}
+
+.zen-weather-main {
+  display: inline-block;
+  vertical-align: middle;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.zen-weather-sub {
+  margin-top: 6px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  font-weight: bold;
 }
 
 body.zen-mode .clock-card {

@@ -683,6 +683,20 @@
     document.getElementById("weather-humidity").textContent = Math.round(cur.relative_humidity_2m) + "%";
     document.getElementById("weather-wind").textContent = Math.round(cur.wind_speed_10m) + " km/h";
 
+    var city = findCityById(state.cityId);
+    var tempRounded = Math.round(cur.temperature_2m);
+    var feelsRounded = Math.round(cur.apparent_temperature);
+    var humRounded = Math.round(cur.relative_humidity_2m);
+    var windRounded = Math.round(cur.wind_speed_10m);
+    var briefRain = (data.daily && data.daily.precipitation_probability_max && data.daily.precipitation_probability_max.length > 0)
+      ? " · Mưa " + Math.round(data.daily.precipitation_probability_max[0]) + "%"
+      : "";
+    document.getElementById("zen-weather-icon").innerHTML = getWeatherSvg(meta.icon);
+    document.getElementById("zen-weather-main").textContent =
+      city.name + " · " + tempRounded + "°C · " + meta.label;
+    document.getElementById("zen-weather-sub").textContent =
+      "Cảm giác " + feelsRounded + "°C · Độ ẩm " + humRounded + "% · Gió " + windRounded + " km/h" + briefRain;
+
     if (cur.uv_index !== undefined && cur.uv_index !== null) {
       var uvVal = Math.round(cur.uv_index * 10) / 10;
       document.getElementById("weather-uv").textContent = uvVal + " (" + getUvLabel(uvVal) + ")";
@@ -834,8 +848,12 @@
     if (cached) {
       renderWeather(cached.data, true, cached.timeStr || "--:--");
     } else {
+      var city = findCityById(cityId);
       document.getElementById("weather-desc").textContent = "Không có kết nối Wi-Fi";
       document.getElementById("weather-sync-status").textContent = "Ngoại tuyến";
+      document.getElementById("zen-weather-icon").innerHTML = "";
+      document.getElementById("zen-weather-main").textContent = city.name + " · Ngoại tuyến";
+      document.getElementById("zen-weather-sub").textContent = "Không có dữ liệu thời tiết lưu tạm";
     }
   }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Kindle E-Ink Dashboard</title>
+  <title>PC E-ink</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="font-md">
@@ -16,7 +16,7 @@
     <!-- Thanh trạng thái trên cùng -->
     <header class="top-bar">
       <div class="top-bar-left">
-        <span class="badge-title">KINDLE DASHBOARD</span>
+        <span class="badge-title">PC E-ink</span>
         <span id="location-label" class="location-label">Đà Nẵng</span>
         <span id="eink-status-pill" class="eink-status-pill">Auto E-Ink: Tắt</span>
       </div>
@@ -40,6 +40,11 @@
           <div id="canchi-date" class="canchi-date">Ngày -- · Tháng --</div>
           <div id="solar-term-badge" class="solar-term-badge">Tiết khí: --</div>
           <div id="holiday-banner" class="holiday-banner"></div>
+          <div id="zen-weather-brief" class="zen-weather-brief">
+            <span id="zen-weather-icon" class="zen-weather-icon"></span>
+            <span id="zen-weather-main" class="zen-weather-main">--°C · Đang tải...</span>
+            <div id="zen-weather-sub" class="zen-weather-sub">Cảm giác --°C · Độ ẩm --% · Gió -- km/h</div>
+          </div>
         </div>
 
         <!-- 2. Khối Thời tiết, Không khí & Biểu đồ 12 giờ -->
