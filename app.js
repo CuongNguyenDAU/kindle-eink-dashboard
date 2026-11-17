@@ -46,7 +46,12 @@
     RSS_READ: "kindle_dash_rss_read_v1",
     RSS_SAVED: "kindle_dash_rss_saved_v1",
     RSS_PAGE_MODE: "kindle_dash_rss_pagemode_v1",
-    RSS_ART_FONT: "kindle_dash_rss_artfont_v1"
+    RSS_ART_FONT: "kindle_dash_rss_artfont_v1",
+    PC_ROOM: "kindle_dash_pc_room_v1",
+    PC_INBOX: "kindle_dash_pc_inbox_v1",
+    PC_AUTO_POLL: "kindle_dash_pc_autopoll_v1",
+    PC_DISMISSED: "kindle_dash_pc_dismissed_v1",
+    LAST_WEB_URL: "kindle_dash_last_url_v1"
   };
 
   var WEEKDAYS_VI = [
@@ -106,7 +111,18 @@
       articleFont: "md",
       articleMode: "page",
       articlePages: [],
-      articlePageIndex: 0
+      articlePageIndex: 0,
+      readerHistory: []
+    },
+    pcSync: {
+      roomCode: "",
+      inboxList: [],
+      autoPoll: true,
+      pollTimerId: null,
+      lanAvailable: false,
+      syncing: false,
+      dismissedIds: {},
+      fetchedNtfyIds: {}
     }
   };
 
@@ -1087,6 +1103,14 @@
     document.getElementById("rss-saved-count").textContent = String(state.rss.savedList.length);
   }
 
+  function updatePcCountBadges() {
+    var countStr = String(state.pcSync.inboxList.length);
+    var rssPc = document.getElementById("rss-pc-count");
+    if (rssPc) { rssPc.textContent = countStr; }
+    var modalPc = document.getElementById("pc-modal-count");
+    if (modalPc) { modalPc.textContent = countStr; }
+  }
+
   function renderRssSourceTabs() {
     var container = document.getElementById("rss-source-tabs");
     var feeds = getAllRssFeeds();
@@ -1105,6 +1129,8 @@
     var sourceItems = [];
     if (state.rss.filterMode === "saved") {
       sourceItems = state.rss.savedList;
+    } else if (state.rss.filterMode === "pc") {
+      sourceItems = state.pcSync.inboxList;
     } else {
       var feedData = state.rss.cache[state.rss.activeFeedId];
       sourceItems = (feedData && feedData.items) ? feedData.items : [];
@@ -1119,7 +1145,7 @@
         continue;
       }
       if (query) {
-        var hay = (item.title + " " + item.snippet + " " + item.sourceName).toLowerCase();
+        var hay = ((item.title || "") + " " + (item.snippet || "") + " " + (item.sourceName || "") + " " + (item.fileName || "")).toLowerCase();
         if (hay.indexOf(query) === -1) {
           continue;
         }
@@ -1131,6 +1157,7 @@
 
   function renderRssList() {
     updateSavedCountBadge();
+    updatePcCountBadges();
 
     var filterBtns = document.getElementById("rss-card").querySelectorAll("[data-rss-filter]");
     var i;
@@ -1155,9 +1182,14 @@
     var listEl = document.getElementById("rss-list");
 
     if (items.length === 0) {
-      var emptyMsg = state.rss.filterMode === "saved"
-        ? "Chưa có bài báo nào được lưu đọc offline."
-        : (state.rss.loadingFeed ? "Đang tải tin tức..." : "Không có bài viết nào phù hợp bộ lọc.");
+      var emptyMsg = "Không có bài viết nào phù hợp bộ lọc.";
+      if (state.rss.filterMode === "saved") {
+        emptyMsg = "Chưa có bài báo nào được lưu đọc offline.";
+      } else if (state.rss.filterMode === "pc") {
+        emptyMsg = "Hộp thư từ PC đang trống. Bấm 'Gửi/Nhận PC' để đặt mã kết nối hoặc gửi link/file.";
+      } else if (state.rss.loadingFeed) {
+        emptyMsg = "Đang tải tin tức...";
+      }
       listEl.innerHTML = '<li class="todo-empty">' + escapeHtml(emptyMsg) + "</li>";
       document.getElementById("rss-page-info").textContent = "Trang 1 / 1";
       return;
@@ -1170,7 +1202,10 @@
       var isSaved = (isArticleSaved(item.id) !== -1);
       var itemCls = isRead ? " is-read" : "";
 
-      var badges = '<span class="rss-badge">' + escapeHtml(item.sourceName) + "</span>";
+      var badges = '<span class="rss-badge">' + escapeHtml(item.sourceName || "RSS") + "</span>";
+      if (item.fileUrl || item.fileName) {
+        badges += '<span class="rss-badge is-solid">FILE</span>';
+      }
       if (isSaved) {
         badges += '<span class="rss-badge is-solid">ĐÃ LƯU</span>';
       }
@@ -1178,7 +1213,9 @@
         badges += '<span class="rss-badge">ĐÃ ĐỌC</span>';
       }
 
-      var snippetShort = item.snippet.length > 150 ? item.snippet.slice(0, 147) + "..." : item.snippet;
+      var rawSnip = item.snippet || "";
+      var snippetShort = rawSnip.length > 150 ? rawSnip.slice(0, 147) + "..." : rawSnip;
+      var openBtnText = (item.fileUrl && (!item.fullParagraphs || item.fullParagraphs.length === 0) && !item.link) ? "Mở mục" : "Đọc bài";
 
       html += '<li class="rss-item' + itemCls + '">' +
         '<div class="rss-item-main" data-rss-open="' + escapeHtml(item.id) + '">' +
@@ -1187,17 +1224,18 @@
           '<div class="rss-item-meta">' + badges + (item.pubText ? " · " + escapeHtml(item.pubText) : "") + "</div>" +
         "</div>" +
         '<div class="rss-item-actions">' +
-          '<button type="button" class="btn btn-small" data-rss-open="' + escapeHtml(item.id) + '">Đọc bài</button>' +
+          '<button type="button" class="btn btn-small" data-rss-open="' + escapeHtml(item.id) + '">' + openBtnText + "</button>" +
           '<button type="button" class="btn btn-small" data-rss-toggle-save="' + escapeHtml(item.id) + '">' +
             (isSaved ? "Bỏ lưu" : "Lưu offline") +
           "</button>" +
+          (item.fileUrl ? '<a class="btn btn-small" href="' + escapeHtml(item.fileUrl) + '" target="_blank" rel="noopener noreferrer" download>Tải file</a>' : "") +
         "</div>" +
       "</li>";
     }
 
     listEl.innerHTML = html;
     document.getElementById("rss-page-info").textContent =
-      "Trang " + state.rss.currentPage + " / " + totalPages + " (" + items.length + " tin)";
+      "Trang " + state.rss.currentPage + " / " + totalPages + " (" + items.length + " mục)";
   }
 
   function parseXmlRssItems(xmlStr, feed) {
@@ -1377,9 +1415,17 @@
 
   function findArticleById(id) {
     var i;
+    if (state.rss.activeArticle && state.rss.activeArticle.id === id) {
+      return state.rss.activeArticle;
+    }
     for (i = 0; i < state.rss.savedList.length; i++) {
       if (state.rss.savedList[i].id === id) {
         return state.rss.savedList[i];
+      }
+    }
+    for (i = 0; i < state.pcSync.inboxList.length; i++) {
+      if (state.pcSync.inboxList[i].id === id) {
+        return state.pcSync.inboxList[i];
       }
     }
     var k;
@@ -1396,6 +1442,25 @@
     return null;
   }
 
+  function cloneArticleForStorage(art) {
+    return {
+      id: art.id,
+      title: art.title,
+      link: art.link || "",
+      pubDate: art.pubDate || "",
+      pubText: art.pubText || "",
+      snippet: art.snippet || "",
+      rawContent: art.rawContent || "",
+      sourceId: art.sourceId || "",
+      sourceName: art.sourceName || "WEB E-INK",
+      fullParagraphs: art.fullParagraphs || null,
+      extractedLinks: art.extractedLinks || [],
+      fileName: art.fileName || "",
+      fileUrl: art.fileUrl || "",
+      itemType: art.itemType || ""
+    };
+  }
+
   function toggleSaveArticle(id) {
     var idx = isArticleSaved(id);
     if (idx !== -1) {
@@ -1403,19 +1468,7 @@
     } else {
       var art = findArticleById(id);
       if (art) {
-        var copy = {
-          id: art.id,
-          title: art.title,
-          link: art.link,
-          pubDate: art.pubDate,
-          pubText: art.pubText,
-          snippet: art.snippet,
-          rawContent: art.rawContent,
-          sourceId: art.sourceId,
-          sourceName: art.sourceName,
-          fullParagraphs: art.fullParagraphs || null
-        };
-        state.rss.savedList.unshift(copy);
+        state.rss.savedList.unshift(cloneArticleForStorage(art));
         if (state.rss.savedList.length > 30) {
           state.rss.savedList.pop();
         }
@@ -1429,24 +1482,108 @@
   }
 
   /* ========================================================================
-     7. TRÌNH ĐỌC BÁO TOÀN VĂN & LẬT TRANG KIỂU KINDLE
+     7. ĐỌC TRANG WEB BẤT KỲ, TRÍCH XUẤT ĐA TẦNG & LẬT TRANG KIỂU KINDLE
      ======================================================================== */
+  function normalizeWebUrl(rawUrl) {
+    var s = trimStr(rawUrl);
+    if (!s) { return ""; }
+    if (!/^https?:\/\//i.test(s)) {
+      s = "https://" + s;
+    }
+    if (/^https?:\/\/[^\/\s]+\.[^\/\s]+/i.test(s) || /^https?:\/\/localhost(:\d+)?(\/|$)/i.test(s)) {
+      return s;
+    }
+    return "";
+  }
+
+  function resolveRelativeUrl(href, baseUrl) {
+    var raw = trimStr(href);
+    if (!raw || raw.indexOf("#") === 0) { return ""; }
+    var low = raw.toLowerCase();
+    if (low.indexOf("javascript:") === 0 || low.indexOf("mailto:") === 0 || low.indexOf("tel:") === 0 || low.indexOf("data:") === 0) {
+      return "";
+    }
+    if (typeof URL === "function") {
+      try {
+        return new URL(raw, baseUrl).href;
+      } catch (e) { /* fallback */ }
+    }
+    if (/^https?:\/\//i.test(raw)) { return raw; }
+    var mOrigin = String(baseUrl || "").match(/^(https?:)\/\/([^\/?#]+)/i);
+    if (!mOrigin) { return ""; }
+    var protocol = mOrigin[1];
+    var origin = protocol + "//" + mOrigin[2];
+    if (raw.indexOf("//") === 0) { return protocol + raw; }
+    if (raw.indexOf("/") === 0) { return origin + raw; }
+    var cleanBase = String(baseUrl).split(/[?#]/)[0];
+    var slashIdx = cleanBase.lastIndexOf("/");
+    var baseDir = slashIdx > 8 ? cleanBase.slice(0, slashIdx + 1) : (origin + "/");
+    return baseDir + raw;
+  }
+
+  function isBoilerplateLinkText(text) {
+    var low = trimStr(text).toLowerCase();
+    if (low.length < 6) { return true; }
+    var bad = [
+      "trang chủ", "đăng nhập", "đăng ký", "chính sách", "điều khoản",
+      "quảng cáo", "liên hệ", "về chúng tôi", "chia sẻ", "theo dõi",
+      "login", "sign in", "sign up", "register", "privacy", "terms", "cookie"
+    ];
+    var i;
+    for (i = 0; i < bad.length; i++) {
+      if (low === bad[i] || (low.length < 22 && low.indexOf(bad[i]) !== -1)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function cleanMarkdownLine(line) {
     var s = trimStr(line);
     // Bỏ hình ảnh markdown ![alt](url)
     s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
     // Chuyển link markdown [text](url) -> text
     s = s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
-    // Bỏ đánh dấu in đậm / nghiêng thừa ở dạng ký tự thô
-    s = s.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/__([^_]+)__/g, "$1");
+    // Bỏ đánh dấu in đậm / nghiêng / code thừa
+    s = s.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/`([^`]+)`/g, "$1");
     s = trimStr(s);
     return s;
   }
 
-  function parseJinaMarkdown(rawText, articleTitle) {
+  function extractLinksFromMarkdown(body, baseUrl) {
+    var links = [];
+    var seen = {};
+    var normBase = String(baseUrl || "").replace(/\/$/, "");
+    var re = /(!?)\[([^\]]{4,140})\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+    var m;
+    while ((m = re.exec(body)) !== null) {
+      if (m[1] === "!") { continue; }
+      var label = trimStr(m[2].replace(/\s+/g, " "));
+      var resolved = resolveRelativeUrl(m[3], baseUrl);
+      if (!resolved || !/^https?:\/\//i.test(resolved)) { continue; }
+      if (/\.(png|jpg|jpeg|gif|webp|svg|ico|css|js)(\?|$)/i.test(resolved)) { continue; }
+      if (resolved.replace(/\/$/, "") === normBase) { continue; }
+      if (isBoilerplateLinkText(label)) { continue; }
+      if (!seen[resolved]) {
+        seen[resolved] = 1;
+        links.push({ text: label, url: resolved });
+        if (links.length >= 15) { break; }
+      }
+    }
+    return links;
+  }
+
+  function parseJinaResponse(rawText, articleTitle, baseUrl) {
+    var jinaTitle = "";
+    var titleMatch = String(rawText || "").match(/^Title:\s*(.+)$/m);
+    if (titleMatch && titleMatch[1]) {
+      jinaTitle = trimStr(titleMatch[1]);
+    }
+
     var marker = "Markdown Content:";
     var idx = rawText.indexOf(marker);
     var body = idx !== -1 ? rawText.slice(idx + marker.length) : rawText;
+    var links = extractLinksFromMarkdown(body, baseUrl);
     var lines = body.split(/\r?\n/);
     var blocks = [];
     var totalChars = 0;
@@ -1457,24 +1594,26 @@
       if (!rawLine) { continue; }
       if (/^[-=*_]{3,}$/.test(rawLine)) { continue; }
       if (/^!\[.*\]\(.*\)$/.test(rawLine)) { continue; }
-      if (/^\*\s+\[/.test(rawLine)) { continue; }
+      if (/^[\*\-]\s+\[/.test(rawLine)) { continue; }
 
-      var isHeading = false;
+      var bType = "p";
       if (rawLine.indexOf("##") === 0 || rawLine.indexOf("# ") === 0) {
-        isHeading = true;
+        bType = "h";
         rawLine = rawLine.replace(/^#+\s*/, "");
       } else if (rawLine.indexOf("> ") === 0) {
+        bType = "q";
         rawLine = rawLine.slice(2);
+      } else if (/^[\*\-\+]\s+/.test(rawLine) || /^\d+\.\s+/.test(rawLine)) {
+        bType = "li";
+        rawLine = rawLine.replace(/^([\*\-\+]|\d+\.)\s+/, "");
       }
 
       var cleaned = cleanMarkdownLine(rawLine);
       if (!cleaned) { continue; }
-      // Bỏ dòng trùng với tiêu đề bài báo ở đầu
       if (blocks.length === 0 && articleTitle && cleaned === trimStr(articleTitle)) {
         continue;
       }
-      // Bỏ các dòng rác điều hướng ngắn cuối/đầu trang
-      if (!isHeading && cleaned.length < 25 && (
+      if (bType !== "h" && cleaned.length < 25 && (
         cleaned.indexOf("Trang chủ") !== -1 ||
         cleaned.indexOf("Tin mới") !== -1 ||
         cleaned.indexOf("Xem thêm") !== -1 ||
@@ -1486,17 +1625,325 @@
       }
       if (/^https?:\/\/\S+$/.test(cleaned)) { continue; }
 
-      blocks.push({
-        type: isHeading ? "h" : "p",
-        text: cleaned
-      });
+      blocks.push({ type: bType, text: cleaned });
       totalChars += cleaned.length;
     }
 
-    if (totalChars < 120) {
+    if (blocks.length === 0 && links.length >= 3) {
+      blocks.push({
+        type: "p",
+        text: "Trang web này chủ yếu chứa danh sách liên kết. Hãy chọn một liên kết bên dưới để đọc tiếp ở chế độ E-Ink."
+      });
+      totalChars = 120;
+    }
+
+    if (totalChars < 100 && blocks.length < 3 && links.length < 3) {
       return null;
     }
-    return blocks;
+    return {
+      title: jinaTitle,
+      blocks: blocks,
+      links: links
+    };
+  }
+
+  function hasAncestorTag(el, stopRoot, tagMap) {
+    var cur = el.parentNode;
+    while (cur && cur !== stopRoot) {
+      var tn = cur.tagName ? cur.tagName.toLowerCase() : "";
+      if (tagMap[tn]) { return true; }
+      cur = cur.parentNode;
+    }
+    return false;
+  }
+
+  function removeNodesBySelector(rootEl, selector) {
+    try {
+      var found = rootEl.querySelectorAll(selector);
+      var i;
+      for (i = 0; i < found.length; i++) {
+        if (found[i] && found[i].parentNode) {
+          found[i].parentNode.removeChild(found[i]);
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function parseHtmlToArticle(htmlStr, pageUrl) {
+    var doc = null;
+    try {
+      if (window.DOMParser) {
+        var parser = new window.DOMParser();
+        doc = parser.parseFromString(htmlStr, "text/html");
+      }
+    } catch (e) { doc = null; }
+
+    if ((!doc || !doc.body) && document.implementation && document.implementation.createHTMLDocument) {
+      try {
+        doc = document.implementation.createHTMLDocument("extract");
+        doc.documentElement.innerHTML = htmlStr;
+      } catch (e2) { doc = null; }
+    }
+
+    if (!doc || !doc.body) {
+      var plain = stripHtml(htmlStr);
+      var plainLines = plain.split(/\n+/);
+      var plainBlocks = [];
+      var pi;
+      for (pi = 0; pi < plainLines.length; pi++) {
+        var pl = trimStr(plainLines[pi]);
+        if (pl.length > 20) { plainBlocks.push({ type: "p", text: pl }); }
+      }
+      return { title: "", blocks: plainBlocks, links: [] };
+    }
+
+    var pageTitle = "";
+    var h1El = doc.querySelector("h1");
+    if (h1El) { pageTitle = trimStr(h1El.textContent || ""); }
+    if (!pageTitle && doc.title) { pageTitle = trimStr(doc.title); }
+
+    var selectors = [
+      "article", "main", "[role='main']", ".fck_detail", "#main-detail",
+      ".singular-content", ".detail-content", ".post-content",
+      ".article-content", ".entry-content", "#content"
+    ];
+    var root = null;
+    var si;
+    for (si = 0; si < selectors.length; si++) {
+      var cand = doc.querySelector(selectors[si]);
+      if (cand && trimStr(cand.textContent || "").length >= 160) {
+        root = cand.cloneNode(true);
+        break;
+      }
+    }
+    var usedBody = false;
+    if (!root) {
+      root = doc.body.cloneNode(true);
+      usedBody = true;
+    }
+
+    // Lấy liên kết trước khi dọn dẹp (ưu tiên trong vùng nội dung chính, nếu ít thì lấy thêm ở body)
+    var links = [];
+    var seenLinks = {};
+    var normBase = String(pageUrl || "").replace(/\/$/, "");
+    function collectLinksFrom(containerEl) {
+      if (!containerEl) { return; }
+      var anchors = containerEl.getElementsByTagName("a");
+      var ai;
+      for (ai = 0; ai < anchors.length; ai++) {
+        var a = anchors[ai];
+        var txt = trimStr((a.textContent || "").replace(/\s+/g, " "));
+        var resolved = resolveRelativeUrl(a.getAttribute("href") || "", pageUrl);
+        if (!resolved || !/^https?:\/\//i.test(resolved)) { continue; }
+        if (/\.(png|jpg|jpeg|gif|webp|svg|ico|css|js)(\?|$)/i.test(resolved)) { continue; }
+        if (resolved.replace(/\/$/, "") === normBase) { continue; }
+        if (isBoilerplateLinkText(txt)) { continue; }
+        if (!seenLinks[resolved]) {
+          seenLinks[resolved] = 1;
+          links.push({ text: txt.slice(0, 110), url: resolved });
+          if (links.length >= 15) { break; }
+        }
+      }
+    }
+    collectLinksFrom(root);
+    if (links.length < 5 && !usedBody) {
+      collectLinksFrom(doc.body);
+    }
+
+    removeNodesBySelector(root, "script, style, noscript, iframe, svg, nav, footer, aside, form, button, input, select, textarea, .ads, .advertisement, .social-share");
+    if (usedBody) {
+      removeNodesBySelector(root, "header");
+    }
+
+    var blocks = [];
+    var totalChars = 0;
+    var skipAncestors = { table: 1, blockquote: 1, pre: 1, li: 1 };
+    var nodes = root.querySelectorAll("h1, h2, h3, h4, p, li, blockquote, pre, table");
+    var ni;
+    for (ni = 0; ni < nodes.length; ni++) {
+      var node = nodes[ni];
+      var tag = node.tagName ? node.tagName.toLowerCase() : "";
+      if (hasAncestorTag(node, root, skipAncestors)) { continue; }
+
+      if (tag === "table") {
+        var trs = node.getElementsByTagName("tr");
+        var rows = [];
+        var r;
+        var maxRows = trs.length < 30 ? trs.length : 30;
+        for (r = 0; r < maxRows; r++) {
+          var cells = trs[r].querySelectorAll("th, td");
+          var rowVals = [];
+          var c;
+          var maxCols = cells.length < 8 ? cells.length : 8;
+          for (c = 0; c < maxCols; c++) {
+            rowVals.push(trimStr((cells[c].textContent || "").replace(/\s+/g, " ")));
+          }
+          if (rowVals.length > 0) {
+            rows.push(rowVals);
+            totalChars += rowVals.join(" ").length;
+          }
+        }
+        if (rows.length > 0) {
+          blocks.push({ type: "table", rows: rows });
+        }
+        continue;
+      }
+
+      var txtVal = trimStr((node.textContent || "").replace(/\s+/g, " "));
+      if (!txtVal) { continue; }
+      if (blocks.length === 0 && pageTitle && txtVal === pageTitle && (tag === "h1" || tag === "h2")) {
+        continue;
+      }
+
+      var blockType = "p";
+      if (tag === "h1" || tag === "h2" || tag === "h3" || tag === "h4") {
+        blockType = "h";
+      } else if (tag === "li") {
+        if (txtVal.length < 4) { continue; }
+        blockType = "li";
+      } else if (tag === "blockquote") {
+        blockType = "q";
+      }
+
+      blocks.push({ type: blockType, text: txtVal });
+      totalChars += txtVal.length;
+      if (blocks.length >= 600) { break; }
+    }
+
+    if (blocks.length === 0 && links.length >= 3) {
+      blocks.push({
+        type: "p",
+        text: "Trang web này chủ yếu là danh sách liên kết. Hãy bấm vào các liên kết bên dưới để đọc tiếp."
+      });
+      totalChars = 100;
+    }
+
+    return {
+      title: pageTitle,
+      blocks: blocks,
+      links: links,
+      totalChars: totalChars
+    };
+  }
+
+  function fetchHtmlViaProxies(url, candidates, index, onDone) {
+    if (index >= candidates.length) {
+      onDone({ ok: false });
+      return;
+    }
+    var cand = candidates[index];
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", cand.endpoint, true);
+    xhr.timeout = 13000;
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300 && xhr.responseText) {
+        var htmlStr = "";
+        var finalUrl = url;
+        if (cand.kind === "lan") {
+          try {
+            var lanRes = JSON.parse(xhr.responseText);
+            if (lanRes && lanRes.ok && lanRes.html) {
+              htmlStr = lanRes.html;
+              finalUrl = lanRes.url || url;
+            }
+          } catch (e) { htmlStr = ""; }
+        } else if (cand.kind === "allorigins") {
+          try {
+            var aoRes = JSON.parse(xhr.responseText);
+            if (aoRes && aoRes.contents) {
+              htmlStr = aoRes.contents;
+            }
+          } catch (e2) { htmlStr = ""; }
+        } else {
+          htmlStr = xhr.responseText;
+        }
+
+        if (htmlStr && htmlStr.length > 80) {
+          var parsed = parseHtmlToArticle(htmlStr, finalUrl);
+          if ((parsed.blocks && parsed.blocks.length >= 2) || (parsed.totalChars && parsed.totalChars >= 100) || (parsed.links && parsed.links.length >= 3)) {
+            onDone({
+              ok: true,
+              title: parsed.title,
+              blocks: parsed.blocks,
+              links: parsed.links,
+              via: cand.label
+            });
+            return;
+          }
+        }
+      }
+      fetchHtmlViaProxies(url, candidates, index + 1, onDone);
+    };
+
+    xhr.ontimeout = function () { fetchHtmlViaProxies(url, candidates, index + 1, onDone); };
+    xhr.onerror = function () { fetchHtmlViaProxies(url, candidates, index + 1, onDone); };
+    try { xhr.send(); } catch (e) { fetchHtmlViaProxies(url, candidates, index + 1, onDone); }
+  }
+
+  function extractWebPageContent(url, currentTitle, onDone) {
+    var jinaUrl = "https://r.jina.ai/" + url;
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", jinaUrl, true);
+    try {
+      xhr.setRequestHeader("Accept", "application/json");
+    } catch (e) { /* bỏ qua nếu trình duyệt cũ không cho phép */ }
+    xhr.timeout = 14000;
+
+    function runHtmlFallback() {
+      var candidates = [];
+      if (state.pcSync.lanAvailable) {
+        candidates.push({
+          kind: "lan",
+          label: "LAN Proxy",
+          endpoint: "/api/extract?url=" + encodeURIComponent(url)
+        });
+      }
+      candidates.push({
+        kind: "allorigins",
+        label: "AllOrigins",
+        endpoint: "https://api.allorigins.win/get?url=" + encodeURIComponent(url)
+      });
+      candidates.push({
+        kind: "codetabs",
+        label: "CodeTabs",
+        endpoint: "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url)
+      });
+      fetchHtmlViaProxies(url, candidates, 0, onDone);
+    }
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300 && xhr.responseText) {
+        var mdText = xhr.responseText;
+        var jsonTitle = "";
+        try {
+          var jsonRes = JSON.parse(xhr.responseText);
+          if (jsonRes && jsonRes.data && jsonRes.data.content) {
+            mdText = jsonRes.data.content;
+            jsonTitle = trimStr(jsonRes.data.title || "");
+          }
+        } catch (e) { /* giữ nguyên dạng văn bản thô */ }
+
+        var parsed = parseJinaResponse(mdText, currentTitle, url);
+        if (parsed && parsed.blocks && parsed.blocks.length > 0) {
+          onDone({
+            ok: true,
+            title: jsonTitle || parsed.title,
+            blocks: parsed.blocks,
+            links: parsed.links,
+            via: "Jina Reader"
+          });
+          return;
+        }
+      }
+      runHtmlFallback();
+    };
+
+    xhr.ontimeout = runHtmlFallback;
+    xhr.onerror = runHtmlFallback;
+    try { xhr.send(); } catch (e) { runHtmlFallback(); }
   }
 
   function buildFallbackBlocks(article) {
@@ -1511,9 +1958,26 @@
       }
     }
     if (blocks.length === 0) {
-      blocks.push({ type: "p", text: "Bài viết chỉ cung cấp tiêu đề trên RSS. Hãy bấm 'Tải toàn văn' hoặc 'Mở link gốc'." });
+      if (article.fileUrl && !article.link) {
+        blocks.push({ type: "p", text: "Đây là file đính kèm từ PC. Hãy bấm nút 'Tải file' ở phía trên để tải về máy Kindle." });
+      } else {
+        blocks.push({ type: "p", text: "Bài viết chưa có nội dung xem trước. Hãy bấm 'Tải toàn văn' hoặc 'Mở link gốc'." });
+      }
     }
     return blocks;
+  }
+
+  function getBlockCharLength(block) {
+    if (!block) { return 0; }
+    if (block.type === "table" && block.rows) {
+      var len = 0;
+      var r;
+      for (r = 0; r < block.rows.length; r++) {
+        len += block.rows[r].join(" ").length + 20;
+      }
+      return len;
+    }
+    return (block.text || "").length;
   }
 
   function buildArticlePages(blocks) {
@@ -1529,13 +1993,14 @@
 
     for (i = 0; i < blocks.length; i++) {
       var b = blocks[i];
-      if (currentPage.length > 0 && currentLen + b.text.length > limit) {
+      var bLen = getBlockCharLength(b);
+      if (currentPage.length > 0 && currentLen + bLen > limit) {
         pages.push(currentPage);
         currentPage = [];
         currentLen = 0;
       }
       currentPage.push(b);
-      currentLen += b.text.length;
+      currentLen += bLen;
     }
     if (currentPage.length > 0) {
       pages.push(currentPage);
@@ -1554,9 +2019,79 @@
     if (saved) { addClass(btn, "is-active"); } else { removeClass(btn, "is-active"); }
   }
 
+  function renderArticleLinksBox(art) {
+    var box = document.getElementById("article-links-box");
+    if (!box) { return; }
+    if (!art || !art.extractedLinks || art.extractedLinks.length === 0) {
+      box.style.display = "none";
+      box.innerHTML = "";
+      return;
+    }
+    var html = '<div class="article-links-title">LIÊN KẾT TRONG TRANG (CHẠM ĐỂ ĐỌC E-INK):</div>';
+    var i;
+    for (i = 0; i < art.extractedLinks.length; i++) {
+      var lnk = art.extractedLinks[i];
+      html += '<button type="button" class="btn btn-small article-link-btn" data-reader-link="' +
+        escapeHtml(lnk.url) + '" data-reader-link-title="' + escapeHtml(lnk.text) + '">' +
+        (i + 1) + ". " + escapeHtml(lnk.text) +
+        "</button>";
+    }
+    box.innerHTML = html;
+    box.style.display = "block";
+  }
+
+  function renderArticleBlocksHtml(renderBlocks) {
+    var html = "";
+    var inList = false;
+    var i;
+    for (i = 0; i < renderBlocks.length; i++) {
+      var b = renderBlocks[i];
+      if (b.type === "li") {
+        if (!inList) {
+          html += "<ul>";
+          inList = true;
+        }
+        html += "<li>" + escapeHtml(b.text) + "</li>";
+        continue;
+      }
+      if (inList) {
+        html += "</ul>";
+        inList = false;
+      }
+      if (b.type === "h") {
+        html += '<h3 class="article-subhead">' + escapeHtml(b.text) + "</h3>";
+      } else if (b.type === "q") {
+        html += "<blockquote>" + escapeHtml(b.text) + "</blockquote>";
+      } else if (b.type === "table" && b.rows) {
+        html += '<div class="article-table-wrap"><table class="article-table">';
+        var r, c;
+        for (r = 0; r < b.rows.length; r++) {
+          html += "<tr>";
+          var cellTag = (r === 0) ? "th" : "td";
+          for (c = 0; c < b.rows[r].length; c++) {
+            html += "<" + cellTag + ">" + escapeHtml(b.rows[r][c]) + "</" + cellTag + ">";
+          }
+          html += "</tr>";
+        }
+        html += "</table></div>";
+      } else {
+        html += "<p>" + escapeHtml(b.text) + "</p>";
+      }
+    }
+    if (inList) {
+      html += "</ul>";
+    }
+    return html;
+  }
+
   function renderArticleReader() {
     var art = state.rss.activeArticle;
     if (!art) { return; }
+
+    var backBtn = document.getElementById("btn-article-back");
+    if (backBtn) {
+      backBtn.style.display = state.rss.readerHistory.length > 0 ? "table-cell" : "none";
+    }
 
     var blocks = (art.fullParagraphs && art.fullParagraphs.length > 0)
       ? art.fullParagraphs
@@ -1588,114 +2123,187 @@
       renderBlocks = blocks;
     }
 
-    var html = "";
+    contentEl.innerHTML = renderArticleBlocksHtml(renderBlocks);
+    renderArticleLinksBox(art);
+    document.getElementById("article-modal").scrollTop = 0;
+  }
+
+  function syncExtractedBackToStores(art) {
+    var savedIdx = isArticleSaved(art.id);
+    if (savedIdx !== -1) {
+      state.rss.savedList[savedIdx].title = art.title;
+      state.rss.savedList[savedIdx].fullParagraphs = art.fullParagraphs;
+      state.rss.savedList[savedIdx].extractedLinks = art.extractedLinks || [];
+      storageSet(STORAGE_KEYS.RSS_SAVED, JSON.stringify(state.rss.savedList));
+    }
     var i;
-    for (i = 0; i < renderBlocks.length; i++) {
-      var b = renderBlocks[i];
-      if (b.type === "h") {
-        html += '<h3 class="article-subhead">' + escapeHtml(b.text) + "</h3>";
-      } else {
-        html += "<p>" + escapeHtml(b.text) + "</p>";
+    var updatedInbox = false;
+    for (i = 0; i < state.pcSync.inboxList.length; i++) {
+      if (state.pcSync.inboxList[i].id === art.id) {
+        state.pcSync.inboxList[i].title = art.title;
+        state.pcSync.inboxList[i].fullParagraphs = art.fullParagraphs;
+        state.pcSync.inboxList[i].extractedLinks = art.extractedLinks || [];
+        updatedInbox = true;
       }
     }
-    contentEl.innerHTML = html;
-    document.getElementById("article-modal").scrollTop = 0;
+    if (updatedInbox) {
+      storageSet(STORAGE_KEYS.PC_INBOX, JSON.stringify(state.pcSync.inboxList));
+    }
   }
 
   function fetchArticleFullText(art) {
     var statusEl = document.getElementById("article-status");
     if (!art || !art.link) {
-      statusEl.textContent = "Bài viết không có liên kết gốc để trích xuất toàn văn.";
+      statusEl.textContent = "Mục này không có liên kết web để trích xuất toàn văn.";
       return;
     }
-    statusEl.textContent = "Đang trích xuất toàn văn bài báo cho E-Ink...";
+    statusEl.textContent = "Đang trích xuất nội dung sạch cho E-Ink (Jina + Proxy dự phòng)...";
 
-    var url = "https://r.jina.ai/" + art.link;
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    try {
-      xhr.setRequestHeader("Accept", "application/json");
-    } catch (e) { /* bỏ qua nếu trình duyệt cũ không cho phép */ }
-    xhr.timeout = 15000;
-
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState !== 4) { return; }
-      if (xhr.status >= 200 && xhr.status < 300 && xhr.responseText) {
-        var mdText = xhr.responseText;
-        try {
-          var jsonRes = JSON.parse(xhr.responseText);
-          if (jsonRes && jsonRes.data && jsonRes.data.content) {
-            mdText = jsonRes.data.content;
-          }
-        } catch (e) {
-          // Giữ nguyên dạng văn bản thô nếu không phải JSON
+    extractWebPageContent(art.link, art.title, function (res) {
+      if (res && res.ok && res.blocks && res.blocks.length > 0) {
+        if (res.title && (!art.title || art.title === art.link || art.title.indexOf("http") === 0)) {
+          art.title = res.title;
         }
-        var blocks = parseJinaMarkdown(mdText, art.title);
-        if (blocks && blocks.length > 0) {
-          art.fullParagraphs = blocks;
-          // Cập nhật lại nếu bài này đã lưu offline
-          var savedIdx = isArticleSaved(art.id);
-          if (savedIdx !== -1) {
-            state.rss.savedList[savedIdx].fullParagraphs = blocks;
-            storageSet(STORAGE_KEYS.RSS_SAVED, JSON.stringify(state.rss.savedList));
-          }
-          if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
-            state.rss.articlePageIndex = 0;
-            statusEl.textContent = "Đã tải toàn văn (" + blocks.length + " đoạn · chế độ E-Ink sạch quảng cáo).";
-            renderArticleReader();
-          }
-          return;
-        }
-      }
-      if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
-        statusEl.textContent = "Không trích xuất được toàn văn trang này — đang hiển thị tóm tắt RSS.";
-      }
-    };
+        art.fullParagraphs = res.blocks;
+        art.extractedLinks = res.links || [];
+        syncExtractedBackToStores(art);
 
-    xhr.ontimeout = function () {
-      if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
-        statusEl.textContent = "Hết thời gian tải toàn văn — đang hiển thị tóm tắt RSS.";
+        if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
+          state.rss.articlePageIndex = 0;
+          document.getElementById("article-title").textContent = art.title;
+          statusEl.textContent = "Đã tải toàn văn qua " + res.via + " (" + res.blocks.length + " đoạn · sạch quảng cáo).";
+          renderArticleReader();
+        }
+        return;
       }
-    };
-    xhr.onerror = function () {
       if (state.rss.activeArticle && state.rss.activeArticle.id === art.id) {
-        statusEl.textContent = "Không có mạng hoặc trang nguồn chặn trích xuất — hiển thị tóm tắt RSS.";
+        statusEl.textContent = "Không trích xuất được toàn văn (trang chặn bot hoặc cần đăng nhập) — thử 'Mở link gốc'.";
       }
-    };
-    try { xhr.send(); } catch (e) { /* ignore */ }
+    });
+  }
+
+  function openArticleObject(art, options) {
+    if (!art) { return; }
+    var opts = options || {};
+    if (opts.pushHistory && state.rss.activeArticle && state.rss.activeArticle.id !== art.id) {
+      state.rss.readerHistory.push(state.rss.activeArticle);
+      if (state.rss.readerHistory.length > 20) {
+        state.rss.readerHistory.shift();
+      }
+    } else if (opts.resetHistory) {
+      state.rss.readerHistory = [];
+    }
+
+    if (art.id) {
+      state.rss.readMap[art.id] = 1;
+      storageSet(STORAGE_KEYS.RSS_READ, JSON.stringify(state.rss.readMap));
+      renderRssList();
+    }
+
+    state.rss.activeArticle = art;
+    state.rss.articlePageIndex = 0;
+
+    document.getElementById("article-source-badge").textContent = art.sourceName || "E-INK READER";
+    document.getElementById("article-title").textContent = art.title || art.link || "Nội dung E-Ink";
+    document.getElementById("article-meta").textContent =
+      (art.sourceName || "Web") + (art.pubText ? " · " + art.pubText : "");
+
+    var urlInput = document.getElementById("article-url-input");
+    if (urlInput) { urlInput.value = art.link || ""; }
+
+    var origLink = document.getElementById("article-original-link");
+    if (art.link && /^https?:\/\//i.test(art.link)) {
+      origLink.href = art.link;
+      origLink.style.display = "inline-block";
+    } else {
+      origLink.href = "#";
+      origLink.style.display = "none";
+    }
+
+    var dlLink = document.getElementById("article-download-link");
+    if (dlLink) {
+      if (art.fileUrl) {
+        dlLink.href = art.fileUrl;
+        dlLink.textContent = "Tải file" + (art.fileName ? " (" + art.fileName + ")" : "");
+        dlLink.style.display = "inline-block";
+      } else {
+        dlLink.href = "#";
+        dlLink.style.display = "none";
+      }
+    }
+
+    var fetchBtn = document.getElementById("btn-article-fetch-full");
+    if (fetchBtn) {
+      fetchBtn.style.display = (art.link && /^https?:\/\//i.test(art.link)) ? "inline-block" : "none";
+    }
+
+    updateArticleSaveButton();
+
+    var statusEl = document.getElementById("article-status");
+    if (art.fullParagraphs && art.fullParagraphs.length > 0) {
+      statusEl.textContent = "Đang đọc nội dung sạch (" + art.fullParagraphs.length + " đoạn).";
+      renderArticleReader();
+    } else if (art.link && /^https?:\/\//i.test(art.link)) {
+      statusEl.textContent = "Đang chuẩn bị và tự động trích xuất toàn văn...";
+      renderArticleReader();
+      fetchArticleFullText(art);
+    } else {
+      statusEl.textContent = art.fileUrl
+        ? "File đính kèm từ PC — bấm 'Tải file' ở trên để tải về Kindle."
+        : "Đang hiển thị nội dung.";
+      renderArticleReader();
+    }
+
+    openModal("article-modal");
   }
 
   function openArticleModal(id) {
     var art = findArticleById(id);
     if (!art) { return; }
+    openArticleObject(art, { resetHistory: true });
+  }
 
-    state.rss.readMap[art.id] = 1;
-    storageSet(STORAGE_KEYS.RSS_READ, JSON.stringify(state.rss.readMap));
-    renderRssList();
-
-    state.rss.activeArticle = art;
-    state.rss.articlePageIndex = 0;
-
-    document.getElementById("article-source-badge").textContent = art.sourceName;
-    document.getElementById("article-title").textContent = art.title;
-    document.getElementById("article-meta").textContent =
-      art.sourceName + (art.pubText ? " · " + art.pubText : "");
-
-    var origLink = document.getElementById("article-original-link");
-    origLink.href = art.link || "#";
-    updateArticleSaveButton();
-
-    var statusEl = document.getElementById("article-status");
-    if (art.fullParagraphs && art.fullParagraphs.length > 0) {
-      statusEl.textContent = "Đang đọc toàn văn đã lưu (" + art.fullParagraphs.length + " đoạn).";
-      renderArticleReader();
-    } else {
-      statusEl.textContent = "Đang hiển thị tóm tắt RSS và tự động tải toàn văn...";
-      renderArticleReader();
-      fetchArticleFullText(art);
+  function openWebUrlInReader(rawUrl, pushHistory, optionalTitle) {
+    var url = normalizeWebUrl(rawUrl);
+    if (!url) {
+      var rssStat = document.getElementById("rss-status");
+      if (rssStat) { rssStat.textContent = "Địa chỉ web chưa hợp lệ (VD: https://vnexpress.net/...)."; }
+      return;
     }
 
-    openModal("article-modal");
+    storageSet(STORAGE_KEYS.LAST_WEB_URL, url);
+    var topUrlInput = document.getElementById("web-url-input");
+    if (topUrlInput) { topUrlInput.value = url; }
+
+    var existing = null;
+    var i;
+    for (i = 0; i < state.rss.savedList.length; i++) {
+      if (state.rss.savedList[i].link === url) { existing = state.rss.savedList[i]; break; }
+    }
+    if (!existing) {
+      for (i = 0; i < state.pcSync.inboxList.length; i++) {
+        if (state.pcSync.inboxList[i].link === url) { existing = state.pcSync.inboxList[i]; break; }
+      }
+    }
+
+    var art = existing || {
+      id: "web::" + url,
+      title: optionalTitle || url,
+      link: url,
+      pubDate: "",
+      pubText: "Đọc Web E-Ink",
+      snippet: "Đang trích xuất nội dung từ " + url,
+      rawContent: "",
+      sourceId: "web-reader",
+      sourceName: "WEB E-INK",
+      fullParagraphs: null,
+      extractedLinks: []
+    };
+
+    openArticleObject(art, {
+      pushHistory: Boolean(pushHistory),
+      resetHistory: !pushHistory
+    });
   }
 
   function navigateArticleInFeed(delta) {
@@ -1708,6 +2316,7 @@
         break;
       }
     }
+    if (idx === -1) { return; }
     var nextIdx = idx + delta;
     if (nextIdx >= 0 && nextIdx < state.rss.filteredItems.length) {
       openArticleModal(state.rss.filteredItems[nextIdx].id);
@@ -1737,6 +2346,1009 @@
       "</div>";
     }
     listEl.innerHTML = html;
+  }
+
+  /* ========================================================================
+     7B. GỬI & NHẬN LINK / FILE TỪ PC TỚI KINDLE (LAN + CLOUD RELAY)
+     ======================================================================== */
+  function foldVietnamese(str) {
+    var s = String(str || "").toLowerCase();
+    s = s.replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, "a");
+    s = s.replace(/[èéẹẻẽêềếệểễ]/g, "e");
+    s = s.replace(/[ìíịỉĩ]/g, "i");
+    s = s.replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, "o");
+    s = s.replace(/[ùúụủũưừứựửữ]/g, "u");
+    s = s.replace(/[ỳýỵỷỹ]/g, "y");
+    s = s.replace(/đ/g, "d");
+    return s;
+  }
+
+  function sanitizeRoomTopic(raw) {
+    var folded = foldVietnamese(trimStr(raw));
+    var slug = folded.replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+    if (!slug) { return ""; }
+    return "keink-" + slug.slice(0, 48);
+  }
+
+  function sanitizeCloudFilename(name) {
+    var clean = foldVietnamese(name || "document.bin").replace(/[^a-z0-9._-]+/g, "_");
+    clean = clean.replace(/^_+|_+$/g, "");
+    return clean || "document.bin";
+  }
+
+  function formatPcNowText() {
+    var d = new Date();
+    return pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + " · " + pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1);
+  }
+
+  function setPcStatus(msg) {
+    var el = document.getElementById("pc-sync-status");
+    if (el) { el.textContent = msg; }
+  }
+
+  function updatePcConnUi() {
+    var badge = document.getElementById("pc-conn-badge");
+    if (badge) {
+      if (state.pcSync.lanAvailable && state.pcSync.roomCode) {
+        badge.textContent = "LAN Wi-Fi + Cloud (" + state.pcSync.roomCode + ")";
+      } else if (state.pcSync.lanAvailable) {
+        badge.textContent = "LAN Server (Wi-Fi)";
+      } else if (state.pcSync.roomCode) {
+        badge.textContent = "Cloud Relay (" + state.pcSync.roomCode + ")";
+      } else {
+        badge.textContent = "Chưa đặt Mã kết nối";
+      }
+    }
+
+    var pollBtn = document.getElementById("btn-pc-auto-poll");
+    if (pollBtn) {
+      pollBtn.textContent = "Tự động nhận (30s): " + (state.pcSync.autoPoll ? "Bật" : "Tắt");
+      if (state.pcSync.autoPoll) { addClass(pollBtn, "is-active"); } else { removeClass(pollBtn, "is-active"); }
+    }
+  }
+
+  function savePcInboxState() {
+    if (state.pcSync.inboxList.length > 50) {
+      state.pcSync.inboxList = state.pcSync.inboxList.slice(0, 50);
+    }
+    var slimList = [];
+    var i;
+    for (i = 0; i < state.pcSync.inboxList.length; i++) {
+      var copy = cloneArticleForStorage(state.pcSync.inboxList[i]);
+      if (i >= 20) {
+        copy.fullParagraphs = null;
+      }
+      slimList.push(copy);
+    }
+    storageSet(STORAGE_KEYS.PC_INBOX, JSON.stringify(slimList));
+    updatePcCountBadges();
+    renderPcInboxModal();
+    if (state.rss.filterMode === "pc") {
+      renderRssList();
+    }
+  }
+
+  function saveDismissedIds() {
+    var keys = [];
+    var k;
+    for (k in state.pcSync.dismissedIds) {
+      if (state.pcSync.dismissedIds.hasOwnProperty(k)) { keys.push(k); }
+    }
+    if (keys.length > 120) {
+      for (var i = 0; i < keys.length - 120; i++) {
+        delete state.pcSync.dismissedIds[keys[i]];
+      }
+    }
+    storageSet(STORAGE_KEYS.PC_DISMISSED, JSON.stringify(state.pcSync.dismissedIds));
+  }
+
+  function mergePcInboxItems(incomingItems) {
+    if (!incomingItems || incomingItems.length === 0) { return; }
+    var mapById = {};
+    var i;
+    for (i = 0; i < state.pcSync.inboxList.length; i++) {
+      mapById[state.pcSync.inboxList[i].id] = state.pcSync.inboxList[i];
+    }
+
+    var added = [];
+    for (i = 0; i < incomingItems.length; i++) {
+      var inc = incomingItems[i];
+      if (!inc || !inc.id) { continue; }
+      if (state.pcSync.dismissedIds[inc.id]) { continue; }
+      var existing = mapById[inc.id];
+      if (existing) {
+        if ((!existing.fullParagraphs || existing.fullParagraphs.length === 0) && inc.fullParagraphs && inc.fullParagraphs.length > 0) {
+          existing.fullParagraphs = inc.fullParagraphs;
+        }
+        if (!existing.fileUrl && inc.fileUrl) { existing.fileUrl = inc.fileUrl; }
+        if ((!existing.title || existing.title === existing.link) && inc.title) { existing.title = inc.title; }
+      } else {
+        mapById[inc.id] = inc;
+        added.push(inc);
+      }
+    }
+
+    if (added.length > 0) {
+      state.pcSync.inboxList = added.concat(state.pcSync.inboxList);
+    }
+    savePcInboxState();
+  }
+
+  function renderPcInboxModal() {
+    var listEl = document.getElementById("pc-inbox-list");
+    if (!listEl) { return; }
+    updatePcCountBadges();
+
+    var items = state.pcSync.inboxList;
+    if (items.length === 0) {
+      listEl.innerHTML = '<div class="todo-empty">Hộp thư đang trống. Nhập Mã kết nối và gửi Link/File từ PC sang!</div>';
+      return;
+    }
+
+    var html = "";
+    var i;
+    for (i = 0; i < items.length; i++) {
+      var it = items[i];
+      var isSaved = (isArticleSaved(it.id) !== -1);
+      var badges = '<span class="rss-badge">' + escapeHtml(it.sourceName || "Từ PC") + "</span>";
+      if (it.fileUrl || it.fileName) {
+        badges += '<span class="rss-badge is-solid">FILE</span>';
+      }
+      if (it.fullParagraphs && it.fullParagraphs.length > 0) {
+        badges += '<span class="rss-badge">' + it.fullParagraphs.length + " đoạn</span>";
+      }
+      if (isSaved) {
+        badges += '<span class="rss-badge is-solid">ĐÃ LƯU</span>';
+      }
+
+      var origBtn = "";
+      if (it.fileUrl) {
+        origBtn = '<a class="btn btn-small" href="' + escapeHtml(it.fileUrl) + '" target="_blank" rel="noopener noreferrer" download>Tải file</a>';
+      } else if (it.link && /^https?:\/\//i.test(it.link)) {
+        origBtn = '<a class="btn btn-small" href="' + escapeHtml(it.link) + '" target="_blank" rel="noopener noreferrer">Link gốc</a>';
+      }
+
+      html += '<div class="pc-inbox-item">' +
+        '<div class="pc-inbox-title">' + escapeHtml(it.title || it.fileName || it.link || "Mục từ PC") + "</div>" +
+        '<div class="pc-inbox-meta">' + badges + (it.pubText ? " · " + escapeHtml(it.pubText) : "") + "</div>" +
+        '<div class="pc-inbox-item-actions">' +
+          '<button type="button" class="btn btn-small" data-pc-open="' + escapeHtml(it.id) + '">Đọc E-Ink</button>' +
+          origBtn +
+          '<button type="button" class="btn btn-small" data-pc-save="' + escapeHtml(it.id) + '">' + (isSaved ? "Bỏ lưu" : "Lưu offline") + "</button>" +
+          '<button type="button" class="btn btn-small" data-pc-del="' + escapeHtml(it.id) + '">Xóa</button>' +
+        "</div>" +
+      "</div>";
+    }
+    listEl.innerHTML = html;
+  }
+
+  function dismissPcItem(id) {
+    state.pcSync.dismissedIds[id] = 1;
+    var next = [];
+    var i;
+    for (i = 0; i < state.pcSync.inboxList.length; i++) {
+      var cur = state.pcSync.inboxList[i];
+      if (cur.id === id) {
+        if (cur.ntfyEventId) {
+          state.pcSync.dismissedIds["ntfy-" + cur.ntfyEventId] = 1;
+        }
+      } else {
+        next.push(cur);
+      }
+    }
+    saveDismissedIds();
+    state.pcSync.inboxList = next;
+    savePcInboxState();
+
+    if (state.pcSync.lanAvailable) {
+      var xhr = new XMLHttpRequest();
+      xhr.open("DELETE", "/api/inbox?id=" + encodeURIComponent(id), true);
+      try { xhr.send(); } catch (e) { /* ignore */ }
+    }
+  }
+
+  function clearPcInbox() {
+    var i;
+    for (i = 0; i < state.pcSync.inboxList.length; i++) {
+      state.pcSync.dismissedIds[state.pcSync.inboxList[i].id] = 1;
+      if (state.pcSync.inboxList[i].ntfyEventId) {
+        state.pcSync.dismissedIds["ntfy-" + state.pcSync.inboxList[i].ntfyEventId] = 1;
+      }
+    }
+    saveDismissedIds();
+    state.pcSync.inboxList = [];
+    savePcInboxState();
+
+    if (state.pcSync.lanAvailable) {
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/inbox/clear", true);
+      try { xhr.send(); } catch (e) { /* ignore */ }
+    }
+    setPcStatus("Đã xóa sạch hộp thư trên thiết bị này.");
+  }
+
+  function checkLanServer(onDone) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/api/ping", true);
+    xhr.timeout = 2500;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      var ok = false;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var res = JSON.parse(xhr.responseText);
+          if (res && res.ok && res.mode === "lan") { ok = true; }
+        } catch (e) { ok = false; }
+      }
+      state.pcSync.lanAvailable = ok;
+      updatePcConnUi();
+      applyPcAutoPollTimer();
+      if (onDone) { onDone(ok); }
+    };
+    xhr.ontimeout = function () {
+      state.pcSync.lanAvailable = false;
+      updatePcConnUi();
+      if (onDone) { onDone(false); }
+    };
+    xhr.onerror = function () {
+      state.pcSync.lanAvailable = false;
+      updatePcConnUi();
+      if (onDone) { onDone(false); }
+    };
+    try { xhr.send(); } catch (e) {
+      state.pcSync.lanAvailable = false;
+      updatePcConnUi();
+      if (onDone) { onDone(false); }
+    }
+  }
+
+  function fetchLanInbox(onDone) {
+    if (!state.pcSync.lanAvailable) {
+      onDone([]);
+      return;
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/api/inbox", true);
+    xhr.timeout = 6000;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var res = JSON.parse(xhr.responseText);
+          if (res && res.ok && res.items) {
+            onDone(res.items);
+            return;
+          }
+        } catch (e) { /* ignore */ }
+      }
+      onDone([]);
+    };
+    xhr.ontimeout = function () { onDone([]); };
+    xhr.onerror = function () { onDone([]); };
+    try { xhr.send(); } catch (e) { onDone([]); }
+  }
+
+  function normalizeCloudItem(rawObj, fallbackId, fallbackPub) {
+    return {
+      id: rawObj.id || ("ntfy-" + fallbackId),
+      title: rawObj.title || rawObj.fileName || rawObj.link || "Nội dung từ PC",
+      link: rawObj.link || "",
+      pubDate: rawObj.pubDate || "",
+      pubText: rawObj.pubText || fallbackPub || formatPcNowText(),
+      snippet: rawObj.snippet || "",
+      rawContent: rawObj.rawContent || "",
+      sourceId: "pc-sync",
+      sourceName: rawObj.sourceName || "Từ PC (Cloud)",
+      fullParagraphs: rawObj.fullParagraphs || null,
+      extractedLinks: rawObj.extractedLinks || [],
+      fileName: rawObj.fileName || "",
+      fileUrl: rawObj.fileUrl || "",
+      itemType: rawObj.itemType || "link"
+    };
+  }
+
+  function textLinesToBlocks(rawText, isHtml) {
+    if (isHtml) {
+      var parsed = parseHtmlToArticle(rawText, "");
+      return parsed.blocks || [];
+    }
+    var lines = String(rawText || "").split(/\r?\n/);
+    var blocks = [];
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var line = trimStr(lines[i].replace(/\s+/g, " "));
+      if (!line) { continue; }
+      var isH = false;
+      if (line.indexOf("#") === 0) {
+        isH = true;
+        line = trimStr(line.replace(/^#+\s*/, ""));
+      }
+      if (line) {
+        blocks.push({ type: isH ? "h" : "p", text: line });
+      }
+      if (blocks.length >= 900) { break; }
+    }
+    return blocks;
+  }
+
+  function fetchNtfyAttachmentItem(ev, fallbackPub, onDone) {
+    var att = ev.attachment;
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", att.url, true);
+    xhr.timeout = 12000;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300 && xhr.responseText) {
+        try {
+          var parsed = JSON.parse(xhr.responseText);
+          if (parsed && parsed.type === "keink_item_v1") {
+            onDone(normalizeCloudItem(parsed, ev.id, fallbackPub));
+            return;
+          }
+        } catch (e) { /* không phải JSON gói tin */ }
+
+        var blocks = textLinesToBlocks(xhr.responseText, false);
+        var snip = blocks.length > 0 ? blocks[0].text.slice(0, 150) : "";
+        onDone({
+          id: "ntfy-" + ev.id,
+          title: att.name || "Văn bản từ PC",
+          link: "",
+          pubDate: "",
+          pubText: fallbackPub,
+          snippet: snip,
+          rawContent: "",
+          sourceId: "pc-sync",
+          sourceName: "Từ PC (Cloud)",
+          fullParagraphs: blocks.length > 0 ? blocks : null,
+          extractedLinks: [],
+          fileName: att.name || "attachment.txt",
+          fileUrl: att.url,
+          itemType: "file"
+        });
+        return;
+      }
+      onDone({
+        id: "ntfy-" + ev.id,
+        title: att.name || "File từ PC",
+        link: "",
+        pubDate: "",
+        pubText: fallbackPub,
+        snippet: "File đính kèm (" + (att.size || 0) + " bytes)",
+        rawContent: "",
+        sourceId: "pc-sync",
+        sourceName: "Từ PC (Cloud)",
+        fullParagraphs: null,
+        extractedLinks: [],
+        fileName: att.name || "file",
+        fileUrl: att.url,
+        itemType: "file"
+      });
+    };
+    xhr.ontimeout = function () { onDone(null); };
+    xhr.onerror = function () { onDone(null); };
+    try { xhr.send(); } catch (e) { onDone(null); }
+  }
+
+  function fetchNtfyInbox(onDone) {
+    var topic = sanitizeRoomTopic(state.pcSync.roomCode);
+    if (!topic) {
+      onDone([]);
+      return;
+    }
+    var url = "https://ntfy.sh/" + encodeURIComponent(topic) + "/json?poll=1&since=48h";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.timeout = 10000;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status < 200 || xhr.status >= 300 || !xhr.responseText) {
+        onDone([]);
+        return;
+      }
+
+      var lines = xhr.responseText.split(/\r?\n/);
+      var events = [];
+      var i;
+      for (i = lines.length - 1; i >= 0; i--) {
+        var ln = trimStr(lines[i]);
+        if (!ln) { continue; }
+        try {
+          var ev = JSON.parse(ln);
+          if (ev && ev.event === "message") {
+            events.push(ev);
+            if (events.length >= 25) { break; }
+          }
+        } catch (e) { /* skip */ }
+      }
+
+      if (events.length === 0) {
+        onDone([]);
+        return;
+      }
+
+      var results = [];
+      var pending = 0;
+      var finishedLoop = false;
+
+      function checkDone() {
+        if (finishedLoop && pending === 0) {
+          onDone(results);
+        }
+      }
+
+      for (i = 0; i < events.length; i++) {
+        (function (evObj) {
+          var pubStr = formatPcNowText();
+          if (evObj.time) {
+            var dt = new Date(evObj.time * 1000);
+            pubStr = pad2(dt.getHours()) + ":" + pad2(dt.getMinutes()) + " · " + pad2(dt.getDate()) + "/" + pad2(dt.getMonth() + 1);
+          }
+
+          var msgText = trimStr(evObj.message || "");
+          var handledJson = false;
+          if (msgText.indexOf("{") === 0) {
+            try {
+              var msgJson = JSON.parse(msgText);
+              if (msgJson && msgJson.type === "keink_item_v1") {
+                var norm = normalizeCloudItem(msgJson, evObj.id, pubStr);
+                if (!state.pcSync.dismissedIds[norm.id]) {
+                  results.push(norm);
+                }
+                handledJson = true;
+              }
+            } catch (e) { handledJson = false; }
+          }
+          if (handledJson) { return; }
+
+          if (evObj.attachment && evObj.attachment.url) {
+            var attId = "ntfy-" + evObj.id;
+            if (state.pcSync.dismissedIds[attId] || state.pcSync.fetchedNtfyIds[evObj.id]) { return; }
+            var already = findArticleById(attId);
+            if (already && already.id === attId) { return; }
+
+            var attType = String(evObj.attachment.type || "").toLowerCase();
+            var attName = String(evObj.attachment.name || "").toLowerCase();
+            var isTextPayload = (attName === "attachment.txt" || attType.indexOf("text/plain") === 0 || attType.indexOf("application/json") !== -1);
+            if (isTextPayload) {
+              pending += 1;
+              state.pcSync.fetchedNtfyIds[evObj.id] = 1;
+              fetchNtfyAttachmentItem(evObj, pubStr, function (itemRes) {
+                if (itemRes) {
+                  itemRes.ntfyEventId = evObj.id;
+                  if (!state.pcSync.dismissedIds[itemRes.id]) {
+                    results.push(itemRes);
+                  }
+                }
+                pending -= 1;
+                checkDone();
+              });
+            } else {
+              results.push({
+                id: attId,
+                title: evObj.attachment.name || "File từ PC",
+                link: "",
+                pubDate: "",
+                pubText: pubStr,
+                snippet: "File đính kèm (" + (evObj.attachment.size || 0) + " bytes)",
+                rawContent: "",
+                sourceId: "pc-sync",
+                sourceName: "Từ PC (Cloud)",
+                fullParagraphs: null,
+                extractedLinks: [],
+                fileName: evObj.attachment.name || "file",
+                fileUrl: evObj.attachment.url,
+                itemType: "file"
+              });
+            }
+            return;
+          }
+
+          if (msgText) {
+            var plainId = "ntfy-" + evObj.id;
+            if (state.pcSync.dismissedIds[plainId]) { return; }
+            var isUrl = /^https?:\/\/\S+$/i.test(msgText);
+            results.push({
+              id: plainId,
+              title: isUrl ? msgText : msgText.slice(0, 72),
+              link: isUrl ? msgText : "",
+              pubDate: "",
+              pubText: pubStr,
+              snippet: isUrl ? "Đường dẫn gửi từ PC" : msgText.slice(0, 160),
+              rawContent: "",
+              sourceId: "pc-sync",
+              sourceName: "Từ PC (Cloud)",
+              fullParagraphs: isUrl ? null : textLinesToBlocks(msgText, false),
+              extractedLinks: [],
+              fileName: "",
+              fileUrl: "",
+              itemType: isUrl ? "link" : "note"
+            });
+          }
+        })(events[i]);
+      }
+
+      finishedLoop = true;
+      checkDone();
+    };
+    xhr.ontimeout = function () { onDone([]); };
+    xhr.onerror = function () { onDone([]); };
+    try { xhr.send(); } catch (e) { onDone([]); }
+  }
+
+  function fetchPcInbox(silent) {
+    if (state.pcSync.syncing) { return; }
+    state.pcSync.syncing = true;
+    if (!silent) {
+      setPcStatus("Đang đồng bộ hộp thư từ PC...");
+    }
+
+    var lanItems = [];
+    var cloudItems = [];
+    var doneCount = 0;
+
+    function finishBoth() {
+      doneCount += 1;
+      if (doneCount < 2) { return; }
+      state.pcSync.syncing = false;
+      var combined = lanItems.concat(cloudItems);
+      if (combined.length > 0) {
+        mergePcInboxItems(combined);
+      } else {
+        renderPcInboxModal();
+      }
+      if (!silent) {
+        if (!state.pcSync.lanAvailable && !state.pcSync.roomCode) {
+          setPcStatus("Hãy nhập Mã kết nối (hoặc chạy run_server.bat trong cùng Wi-Fi) để đồng bộ.");
+        } else {
+          var now = new Date();
+          setPcStatus("Đã đồng bộ lúc " + pad2(now.getHours()) + ":" + pad2(now.getMinutes()) + " (" + state.pcSync.inboxList.length + " mục).");
+        }
+      }
+    }
+
+    fetchLanInbox(function (items) {
+      lanItems = items || [];
+      finishBoth();
+    });
+
+    fetchNtfyInbox(function (items) {
+      cloudItems = items || [];
+      finishBoth();
+    });
+  }
+
+  function applyPcAutoPollTimer() {
+    if (state.pcSync.pollTimerId) {
+      window.clearInterval(state.pcSync.pollTimerId);
+      state.pcSync.pollTimerId = null;
+    }
+    if (state.pcSync.autoPoll && (state.pcSync.lanAvailable || state.pcSync.roomCode)) {
+      state.pcSync.pollTimerId = window.setInterval(function () {
+        fetchPcInbox(true);
+      }, 30000);
+    }
+  }
+
+  function publishItemToDestinations(item, onComplete) {
+    mergePcInboxItems([item]);
+
+    var topic = sanitizeRoomTopic(state.pcSync.roomCode);
+    var useLan = state.pcSync.lanAvailable;
+    var useCloud = Boolean(topic);
+
+    if (!useLan && !useCloud) {
+      setPcStatus("Đã lưu vào máy này. Hãy nhập Mã kết nối ở mục 1 để gửi sang Kindle qua Internet.");
+      if (onComplete) { onComplete(); }
+      return;
+    }
+
+    var tasks = 0;
+    var lanOk = false;
+    var cloudOk = false;
+
+    function checkDone() {
+      tasks -= 1;
+      if (tasks > 0) { return; }
+      var via = [];
+      if (lanOk) { via.push("LAN Wi-Fi"); }
+      if (cloudOk) { via.push("Cloud Relay"); }
+      if (via.length > 0) {
+        setPcStatus("Đã gửi sang Kindle thành công (" + via.join(" + ") + "): " + item.title);
+      } else {
+        setPcStatus("Không gửi được lên kênh trung gian (kiểm tra mạng hoặc Mã kết nối).");
+      }
+      if (onComplete) { onComplete(); }
+    }
+
+    if (useLan) {
+      tasks += 1;
+      var xhrLan = new XMLHttpRequest();
+      xhrLan.open("POST", "/api/inbox", true);
+      xhrLan.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+      xhrLan.timeout = 10000;
+      xhrLan.onreadystatechange = function () {
+        if (xhrLan.readyState !== 4) { return; }
+        if (xhrLan.status >= 200 && xhrLan.status < 300) { lanOk = true; }
+        checkDone();
+      };
+      xhrLan.ontimeout = checkDone;
+      xhrLan.onerror = checkDone;
+      try { xhrLan.send(JSON.stringify(item)); } catch (e) { checkDone(); }
+    }
+
+    if (useCloud) {
+      tasks += 1;
+      var cloudPayload = cloneArticleForStorage(item);
+      cloudPayload.type = "keink_item_v1";
+      cloudPayload.sourceName = "Từ PC (Cloud)";
+      var xhrCloud = new XMLHttpRequest();
+      xhrCloud.open("POST", "https://ntfy.sh/" + encodeURIComponent(topic), true);
+      xhrCloud.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
+      xhrCloud.timeout = 15000;
+      xhrCloud.onreadystatechange = function () {
+        if (xhrCloud.readyState !== 4) { return; }
+        if (xhrCloud.status >= 200 && xhrCloud.status < 300) { cloudOk = true; }
+        checkDone();
+      };
+      xhrCloud.ontimeout = checkDone;
+      xhrCloud.onerror = checkDone;
+      try { xhrCloud.send(JSON.stringify(cloudPayload)); } catch (e) { checkDone(); }
+    }
+  }
+
+  function sendLinkOrTextFromPc() {
+    var rawUrlField = trimStr(document.getElementById("pc-send-url").value);
+    var rawTextField = trimStr(document.getElementById("pc-send-text").value);
+    if (!rawUrlField && !rawTextField) {
+      setPcStatus("Vui lòng nhập đường dẫn URL hoặc nội dung văn bản cần gửi.");
+      return;
+    }
+
+    var maybeUrl = normalizeWebUrl(rawUrlField);
+    var nowId = "pc-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000);
+
+    if (maybeUrl && !rawTextField) {
+      setPcStatus("Đang trích xuất trước nội dung trang web trên PC để gửi bản sạch sang Kindle...");
+      extractWebPageContent(maybeUrl, maybeUrl, function (res) {
+        var hasBlocks = res && res.ok && res.blocks && res.blocks.length > 0;
+        var title = (res && res.title) ? res.title : maybeUrl;
+        var snippet = hasBlocks ? res.blocks[0].text.slice(0, 160) : ("Đường dẫn web: " + maybeUrl);
+        var item = {
+          id: nowId,
+          title: title,
+          link: maybeUrl,
+          pubDate: "",
+          pubText: formatPcNowText(),
+          snippet: snippet,
+          rawContent: "",
+          sourceId: "pc-sync",
+          sourceName: state.pcSync.lanAvailable ? "Từ PC (LAN)" : "Từ PC (Cloud)",
+          fullParagraphs: hasBlocks ? res.blocks : null,
+          extractedLinks: (res && res.links) ? res.links : [],
+          fileName: "",
+          fileUrl: "",
+          itemType: "link"
+        };
+        publishItemToDestinations(item, function () {
+          document.getElementById("pc-send-url").value = "";
+        });
+      });
+      return;
+    }
+
+    var blocks = rawTextField ? textLinesToBlocks(rawTextField, false) : null;
+    var titleText = rawUrlField || (blocks && blocks.length > 0 ? blocks[0].text.slice(0, 72) : "Ghi chú từ PC");
+    var itemObj = {
+      id: nowId,
+      title: titleText,
+      link: maybeUrl || "",
+      pubDate: "",
+      pubText: formatPcNowText(),
+      snippet: rawTextField ? rawTextField.slice(0, 160) : ("Đường dẫn: " + maybeUrl),
+      rawContent: "",
+      sourceId: "pc-sync",
+      sourceName: state.pcSync.lanAvailable ? "Từ PC (LAN)" : "Từ PC (Cloud)",
+      fullParagraphs: blocks,
+      extractedLinks: [],
+      fileName: "",
+      fileUrl: "",
+      itemType: maybeUrl ? "link" : "note"
+    };
+    publishItemToDestinations(itemObj, function () {
+      document.getElementById("pc-send-url").value = "";
+      document.getElementById("pc-send-text").value = "";
+    });
+  }
+
+  function readUint16LE(bytes, offset) {
+    return bytes[offset] | (bytes[offset + 1] << 8);
+  }
+
+  function readUint32LE(bytes, offset) {
+    return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+  }
+
+  function decodeBytesUtf8(bytes) {
+    if (typeof TextDecoder === "function") {
+      try {
+        return new TextDecoder("utf-8").decode(bytes);
+      } catch (e) { /* fallback */ }
+    }
+    var out = "";
+    var i;
+    for (i = 0; i < bytes.length; i++) {
+      out += String.fromCharCode(bytes[i]);
+    }
+    try {
+      return decodeURIComponent(escape(out));
+    } catch (e2) {
+      return out;
+    }
+  }
+
+  function parseDocxXmlToBlocks(xmlText) {
+    var blocks = [];
+    if (!window.DOMParser || !xmlText) { return blocks; }
+    try {
+      var parser = new window.DOMParser();
+      var xmlDoc = parser.parseFromString(xmlText, "text/xml");
+      var allEls = xmlDoc.getElementsByTagName("*");
+      var i;
+      for (i = 0; i < allEls.length; i++) {
+        var el = allEls[i];
+        var lname = el.localName || el.tagName;
+        if (lname !== "p" && lname !== "w:p") { continue; }
+        var pChildren = el.getElementsByTagName("*");
+        var texts = [];
+        var isHeading = false;
+        var j;
+        for (j = 0; j < pChildren.length; j++) {
+          var ch = pChildren[j];
+          var cn = ch.localName || ch.tagName;
+          if (cn === "pStyle" || cn === "w:pStyle") {
+            var val = ch.getAttribute("w:val") || ch.getAttribute("val") || "";
+            if (val.toLowerCase().indexOf("heading") !== -1 || val.toLowerCase().indexOf("title") !== -1) {
+              isHeading = true;
+            }
+          } else if ((cn === "t" || cn === "w:t") && ch.textContent) {
+            texts.push(ch.textContent);
+          }
+        }
+        var line = trimStr(texts.join("").replace(/\s+/g, " "));
+        if (line) {
+          blocks.push({ type: isHeading ? "h" : "p", text: line });
+          if (blocks.length >= 1200) { break; }
+        }
+      }
+    } catch (e) {
+      return [];
+    }
+    return blocks;
+  }
+
+  function extractDocxBlocksClientSide(arrayBuffer, onDone) {
+    try {
+      var bytes = new Uint8Array(arrayBuffer);
+      var eocdPos = -1;
+      var minStart = Math.max(0, bytes.length - 65557);
+      var i;
+      for (i = bytes.length - 22; i >= minStart; i--) {
+        if (bytes[i] === 0x50 && bytes[i + 1] === 0x4b && bytes[i + 2] === 0x05 && bytes[i + 3] === 0x06) {
+          eocdPos = i;
+          break;
+        }
+      }
+      if (eocdPos === -1) {
+        onDone([]);
+        return;
+      }
+      var cdCount = readUint16LE(bytes, eocdPos + 10);
+      var cdOffset = readUint32LE(bytes, eocdPos + 16);
+      var pos = cdOffset;
+
+      for (i = 0; i < cdCount; i++) {
+        if (pos + 46 > bytes.length) { break; }
+        if (bytes[pos] !== 0x50 || bytes[pos + 1] !== 0x4b || bytes[pos + 2] !== 0x01 || bytes[pos + 3] !== 0x02) {
+          break;
+        }
+        var compMethod = readUint16LE(bytes, pos + 10);
+        var compSize = readUint32LE(bytes, pos + 20);
+        var nameLen = readUint16LE(bytes, pos + 28);
+        var extraLen = readUint16LE(bytes, pos + 30);
+        var commentLen = readUint16LE(bytes, pos + 32);
+        var localOffset = readUint32LE(bytes, pos + 42);
+        var entryName = decodeBytesUtf8(bytes.subarray(pos + 46, pos + 46 + nameLen));
+
+        if (entryName === "word/document.xml") {
+          var lNameLen = readUint16LE(bytes, localOffset + 26);
+          var lExtraLen = readUint16LE(bytes, localOffset + 28);
+          var dataStart = localOffset + 30 + lNameLen + lExtraLen;
+          var slice = bytes.subarray(dataStart, dataStart + compSize);
+
+          if (compMethod === 0) {
+            onDone(parseDocxXmlToBlocks(decodeBytesUtf8(slice)));
+            return;
+          }
+          if (compMethod === 8 && typeof DecompressionStream === "function" && typeof Response === "function" && typeof Blob === "function") {
+            var ds = new DecompressionStream("deflate-raw");
+            var stream = new Blob([slice]).stream().pipeThrough(ds);
+            new Response(stream).text().then(function (xmlStr) {
+              onDone(parseDocxXmlToBlocks(xmlStr));
+            })["catch"](function () {
+              onDone([]);
+            });
+            return;
+          }
+          onDone([]);
+          return;
+        }
+        pos += 46 + nameLen + extraLen + commentLen;
+      }
+      onDone([]);
+    } catch (e) {
+      onDone([]);
+    }
+  }
+
+  function extractClientFileBlocks(file, onDone) {
+    var nameLower = String(file.name || "").toLowerCase();
+    var dotIdx = nameLower.lastIndexOf(".");
+    var ext = dotIdx !== -1 ? nameLower.slice(dotIdx) : "";
+
+    if (typeof FileReader === "undefined") {
+      onDone(null);
+      return;
+    }
+
+    if (ext === ".txt" || ext === ".md" || ext === ".csv" || ext === ".json" || ext === ".log" || ext === ".html" || ext === ".htm") {
+      var textReader = new FileReader();
+      textReader.onload = function () {
+        var blocks = textLinesToBlocks(textReader.result || "", ext === ".html" || ext === ".htm");
+        onDone(blocks.length > 0 ? blocks : null);
+      };
+      textReader.onerror = function () { onDone(null); };
+      textReader.readAsText(file, "UTF-8");
+      return;
+    }
+
+    if (ext === ".docx") {
+      var binReader = new FileReader();
+      binReader.onload = function () {
+        extractDocxBlocksClientSide(binReader.result, function (blocks) {
+          onDone(blocks && blocks.length > 0 ? blocks : null);
+        });
+      };
+      binReader.onerror = function () { onDone(null); };
+      binReader.readAsArrayBuffer(file);
+      return;
+    }
+
+    onDone(null);
+  }
+
+  function uploadFileToLan(file, onDone) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload", true);
+    xhr.setRequestHeader("X-File-Name", encodeURIComponent(file.name));
+    xhr.timeout = 30000;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var res = JSON.parse(xhr.responseText);
+          if (res && res.ok) {
+            onDone(res);
+            return;
+          }
+        } catch (e) { /* ignore */ }
+      }
+      onDone(null);
+    };
+    xhr.ontimeout = function () { onDone(null); };
+    xhr.onerror = function () { onDone(null); };
+    try { xhr.send(file); } catch (e) { onDone(null); }
+  }
+
+  function uploadFileToCloudBin(file, topic, onDone) {
+    if (file.size > 14 * 1024 * 1024) {
+      onDone("");
+      return;
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "https://ntfy.sh/" + encodeURIComponent(topic + "-bin"), true);
+    xhr.setRequestHeader("Filename", sanitizeCloudFilename(file.name));
+    xhr.timeout = 30000;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) { return; }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var res = JSON.parse(xhr.responseText);
+          if (res && res.attachment && res.attachment.url) {
+            onDone(res.attachment.url);
+            return;
+          }
+        } catch (e) { /* ignore */ }
+      }
+      onDone("");
+    };
+    xhr.ontimeout = function () { onDone(""); };
+    xhr.onerror = function () { onDone(""); };
+    try { xhr.send(file); } catch (e) { onDone(""); }
+  }
+
+  function sendFileFromPc() {
+    var input = document.getElementById("pc-file-input");
+    var file = (input && input.files && input.files.length > 0) ? input.files[0] : null;
+    if (!file) {
+      setPcStatus("Vui lòng chọn một file trên máy tính trước.");
+      return;
+    }
+    if (!state.pcSync.lanAvailable && !state.pcSync.roomCode) {
+      setPcStatus("Hãy nhập Mã kết nối ở mục 1 (hoặc chạy run_server.bat trong cùng Wi-Fi) trước khi gửi file.");
+      return;
+    }
+
+    setPcStatus("Đang xử lý và gửi file '" + file.name + "'...");
+    extractClientFileBlocks(file, function (clientBlocks) {
+      var topic = sanitizeRoomTopic(state.pcSync.roomCode);
+      var lanDone = !state.pcSync.lanAvailable;
+      var cloudDone = !topic;
+      var lanRes = null;
+      var cloudFileUrl = "";
+
+      function finalizeFilePublish() {
+        if (!lanDone || !cloudDone) { return; }
+        var finalBlocks = (lanRes && lanRes.fullParagraphs && lanRes.fullParagraphs.length > 0)
+          ? lanRes.fullParagraphs
+          : clientBlocks;
+        var finalFileUrl = (lanRes && lanRes.fileUrl) ? lanRes.fileUrl : cloudFileUrl;
+        var snippet = (finalBlocks && finalBlocks.length > 0)
+          ? finalBlocks[0].text.slice(0, 160)
+          : ("File " + file.name + " (" + Math.round(file.size / 1024) + " KB)");
+
+        if (!finalBlocks && !finalFileUrl) {
+          setPcStatus("Không tải lên được file (file vượt giới hạn 14MB trên Cloud hoặc lỗi mạng). Hãy dùng LAN Server cho file nặng.");
+          return;
+        }
+
+        var item = {
+          id: "file-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000),
+          title: file.name,
+          link: "",
+          pubDate: "",
+          pubText: formatPcNowText(),
+          snippet: snippet,
+          rawContent: "",
+          sourceId: "pc-sync",
+          sourceName: state.pcSync.lanAvailable ? "File từ PC (LAN)" : "File từ PC (Cloud)",
+          fullParagraphs: finalBlocks,
+          extractedLinks: [],
+          fileName: file.name,
+          fileUrl: finalFileUrl,
+          itemType: "file"
+        };
+
+        publishItemToDestinations(item, function () {
+          input.value = "";
+        });
+      }
+
+      if (state.pcSync.lanAvailable) {
+        uploadFileToLan(file, function (res) {
+          lanRes = res;
+          lanDone = true;
+          finalizeFilePublish();
+        });
+      }
+
+      if (topic) {
+        uploadFileToCloudBin(file, topic, function (url) {
+          cloudFileUrl = url;
+          cloudDone = true;
+          finalizeFilePublish();
+        });
+      }
+    });
   }
 
   /* ========================================================================
@@ -2025,6 +3637,21 @@
     state.rss.savedList = storageGetJson(STORAGE_KEYS.RSS_SAVED, []);
     state.rss.articleMode = storageGet(STORAGE_KEYS.RSS_PAGE_MODE, "page");
     state.rss.articleFont = storageGet(STORAGE_KEYS.RSS_ART_FONT, "md");
+
+    state.pcSync.roomCode = storageGet(STORAGE_KEYS.PC_ROOM, "");
+    state.pcSync.inboxList = storageGetJson(STORAGE_KEYS.PC_INBOX, []);
+    state.pcSync.autoPoll = (storageGet(STORAGE_KEYS.PC_AUTO_POLL, "1") !== "0");
+    state.pcSync.dismissedIds = storageGetJson(STORAGE_KEYS.PC_DISMISSED, {});
+
+    var pcRoomInput = document.getElementById("pc-room-input");
+    if (pcRoomInput && state.pcSync.roomCode) {
+      pcRoomInput.value = state.pcSync.roomCode;
+    }
+    var lastWebUrl = storageGet(STORAGE_KEYS.LAST_WEB_URL, "");
+    var webUrlInput = document.getElementById("web-url-input");
+    if (webUrlInput && lastWebUrl) {
+      webUrlInput.value = lastWebUrl;
+    }
   }
 
   function bindEvents() {
@@ -2111,15 +3738,31 @@
       }
     };
 
-    // RSS Reader danh sách & bộ lọc
+    // Đọc trang web bất kỳ & RSS Reader danh sách & bộ lọc
+    document.getElementById("btn-read-url-go").onclick = function () {
+      openWebUrlInReader(document.getElementById("web-url-input").value, false);
+    };
+    document.getElementById("web-url-input").onkeydown = function (e) {
+      var evt = e || window.event;
+      if (evt && evt.keyCode === 13) {
+        if (evt.preventDefault) { evt.preventDefault(); }
+        openWebUrlInReader(this.value, false);
+      }
+    };
     document.getElementById("btn-rss-fullscreen").onclick = function () { toggleRssFullscreen(); };
     document.getElementById("btn-rss-toolbar").onclick = function () { toggleRssFullscreen(); };
-    document.getElementById("btn-rss-refresh").onclick = function () { fetchRssFeed(state.rss.activeFeedId); };
+    document.getElementById("btn-rss-refresh").onclick = function () {
+      if (state.rss.filterMode === "pc") {
+        fetchPcInbox(false);
+      } else {
+        fetchRssFeed(state.rss.activeFeedId);
+      }
+    };
     document.getElementById("rss-source-tabs").onclick = function (e) {
       var target = e ? (e.target || e.srcElement) : window.event.srcElement;
       var fid = target ? target.getAttribute("data-feed-id") : null;
       if (fid) {
-        if (state.rss.filterMode === "saved") {
+        if (state.rss.filterMode === "saved" || state.rss.filterMode === "pc") {
           state.rss.filterMode = "all";
         }
         state.rss.currentPage = 1;
@@ -2140,6 +3783,12 @@
       state.rss.filterMode = "saved";
       state.rss.currentPage = 1;
       renderRssList();
+    };
+    document.getElementById("btn-rss-filter-pc").onclick = function () {
+      state.rss.filterMode = "pc";
+      state.rss.currentPage = 1;
+      renderRssList();
+      fetchPcInbox(true);
     };
     document.getElementById("btn-rss-mark-all-read").onclick = function () {
       var feedData = state.rss.cache[state.rss.activeFeedId];
@@ -2248,8 +3897,36 @@
       }
     };
 
-    // Trình đọc bài viết toàn văn
+    // Trình đọc bài viết & trang web toàn văn
     document.getElementById("btn-close-article").onclick = function () { closeModal("article-modal"); };
+    document.getElementById("btn-article-back").onclick = function () {
+      if (state.rss.readerHistory.length > 0) {
+        var prev = state.rss.readerHistory.pop();
+        openArticleObject(prev, { resetHistory: false });
+      }
+    };
+    document.getElementById("btn-article-url-go").onclick = function () {
+      openWebUrlInReader(document.getElementById("article-url-input").value, true);
+    };
+    document.getElementById("article-url-input").onkeydown = function (e) {
+      var evt = e || window.event;
+      if (evt && evt.keyCode === 13) {
+        if (evt.preventDefault) { evt.preventDefault(); }
+        openWebUrlInReader(this.value, true);
+      }
+    };
+    document.getElementById("article-links-box").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      while (target && target.id !== "article-links-box") {
+        var lnkUrl = target.getAttribute("data-reader-link");
+        if (lnkUrl) {
+          var lnkTitle = target.getAttribute("data-reader-link-title") || "";
+          openWebUrlInReader(lnkUrl, true, lnkTitle);
+          return;
+        }
+        target = target.parentNode;
+      }
+    };
     document.getElementById("btn-article-font-down").onclick = function () { stepArticleFont(-1); };
     document.getElementById("btn-article-font-up").onclick = function () { stepArticleFont(1); };
     document.getElementById("btn-article-save").onclick = function () {
@@ -2277,6 +3954,86 @@
     };
     document.getElementById("btn-article-item-prev").onclick = function () { navigateArticleInFeed(-1); };
     document.getElementById("btn-article-item-next").onclick = function () { navigateArticleInFeed(1); };
+
+    // Gửi / Nhận Link & File từ PC tới Kindle
+    function openPcModalAndSync() {
+      updatePcConnUi();
+      renderPcInboxModal();
+      openModal("pc-sync-modal");
+      checkLanServer(function () {
+        if (state.pcSync.lanAvailable || state.pcSync.roomCode) {
+          fetchPcInbox(false);
+        }
+      });
+    }
+    document.getElementById("btn-open-pc-modal").onclick = openPcModalAndSync;
+    document.getElementById("btn-pc-toolbar").onclick = openPcModalAndSync;
+    document.getElementById("btn-close-pc-modal").onclick = function () { closeModal("pc-sync-modal"); };
+    function applyPcRoomCodeAndSync() {
+      var raw = trimStr(document.getElementById("pc-room-input").value);
+      if (raw && !sanitizeRoomTopic(raw)) {
+        setPcStatus("Mã kết nối phải chứa chữ cái hoặc số (VD: cuong-kindle).");
+        return;
+      }
+      state.pcSync.roomCode = raw;
+      storageSet(STORAGE_KEYS.PC_ROOM, raw);
+      updatePcConnUi();
+      applyPcAutoPollTimer();
+      fetchPcInbox(false);
+    }
+    document.getElementById("btn-pc-save-room").onclick = applyPcRoomCodeAndSync;
+    document.getElementById("pc-room-input").onkeydown = function (e) {
+      var evt = e || window.event;
+      if (evt && evt.keyCode === 13) {
+        if (evt.preventDefault) { evt.preventDefault(); }
+        applyPcRoomCodeAndSync();
+      }
+    };
+    document.getElementById("btn-pc-auto-poll").onclick = function () {
+      state.pcSync.autoPoll = !state.pcSync.autoPoll;
+      storageSet(STORAGE_KEYS.PC_AUTO_POLL, state.pcSync.autoPoll ? "1" : "0");
+      updatePcConnUi();
+      applyPcAutoPollTimer();
+    };
+    document.getElementById("btn-pc-send-item").onclick = function () { sendLinkOrTextFromPc(); };
+    document.getElementById("pc-send-url").onkeydown = function (e) {
+      var evt = e || window.event;
+      if (evt && evt.keyCode === 13) {
+        if (evt.preventDefault) { evt.preventDefault(); }
+        sendLinkOrTextFromPc();
+      }
+    };
+    document.getElementById("btn-pc-send-file").onclick = function () { sendFileFromPc(); };
+    document.getElementById("btn-pc-refresh-inbox").onclick = function () {
+      checkLanServer(function () { fetchPcInbox(false); });
+    };
+    document.getElementById("btn-pc-clear-inbox").onclick = function () { clearPcInbox(); };
+    document.getElementById("pc-inbox-list").onclick = function (e) {
+      var target = e ? (e.target || e.srcElement) : window.event.srcElement;
+      while (target && target.id !== "pc-inbox-list") {
+        var openId = target.getAttribute("data-pc-open");
+        if (openId) {
+          var art = findArticleById(openId);
+          if (art) {
+            closeModal("pc-sync-modal");
+            openArticleObject(art, { resetHistory: true });
+          }
+          return;
+        }
+        var saveId = target.getAttribute("data-pc-save");
+        if (saveId) {
+          toggleSaveArticle(saveId);
+          renderPcInboxModal();
+          return;
+        }
+        var delId = target.getAttribute("data-pc-del");
+        if (delId) {
+          dismissPcItem(delId);
+          return;
+        }
+        target = target.parentNode;
+      }
+    };
 
     // Thanh công cụ dưới cùng & Cài đặt E-Ink
     document.getElementById("btn-clean-ghost").onclick = function () { cleanGhosting(); };
@@ -2386,6 +4143,15 @@
     }
     fetchWeather();
     fetchRssFeed(state.rss.activeFeedId);
+    updatePcConnUi();
+    updatePcCountBadges();
+    renderPcInboxModal();
+    checkLanServer(function () {
+      if (state.pcSync.lanAvailable || state.pcSync.roomCode) {
+        fetchPcInbox(true);
+      }
+      applyPcAutoPollTimer();
+    });
 
     // Tự động cập nhật thời tiết mỗi 30 phút và RSS mỗi 60 phút
     window.setInterval(fetchWeather, 30 * 60 * 1000);

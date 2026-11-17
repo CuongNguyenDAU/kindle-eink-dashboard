@@ -1062,6 +1062,34 @@ body.invert-mode .todo-time-badge {
 
 .rss-filter-tabs .btn-small {
   margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+#rss-card .header-btn-group {
+  white-space: normal;
+}
+
+#rss-card .header-btn-group .btn-small {
+  margin-bottom: 4px;
+}
+
+/* Đọc trang web bất kỳ */
+.web-reader-bar {
+  display: table;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.web-url-input {
+  display: table-cell;
+  width: 100%;
+}
+
+#btn-read-url-go {
+  display: table-cell;
+  width: 96px;
+  border-left: none;
+  white-space: nowrap;
 }
 
 #btn-rss-mark-all-read {
@@ -1523,4 +1551,244 @@ body.invert-mode .article-footer-nav {
 
 body.invert-mode .code-box {
   border-color: #ffffff;
+}
+
+/* Thanh URL & Liên kết con trong Trình đọc E-Ink */
+.article-url-bar {
+  display: table;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.article-url-bar > * {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+#btn-article-back {
+  width: 96px;
+  white-space: nowrap;
+  border-right: none;
+}
+
+.article-url-input {
+  width: 100%;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 13px;
+}
+
+#btn-article-url-go {
+  width: 72px;
+  white-space: nowrap;
+  border-left: none;
+}
+
+.article-content ul {
+  margin: 0 0 14px 22px;
+}
+
+.article-content li {
+  margin-bottom: 6px;
+}
+
+.article-content blockquote {
+  border-left: 4px solid #000000;
+  padding-left: 10px;
+  margin: 0 0 14px 0;
+  font-style: italic;
+}
+
+body.invert-mode .article-content blockquote {
+  border-left-color: #ffffff;
+}
+
+.article-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 14px;
+}
+
+.article-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.85em;
+}
+
+.article-table th,
+.article-table td {
+  border: 2px solid #000000;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+body.invert-mode .article-table th,
+body.invert-mode .article-table td {
+  border-color: #ffffff;
+}
+
+.article-links-box {
+  border-top: 2px dashed #000000;
+  padding-top: 12px;
+  margin-bottom: 14px;
+}
+
+body.invert-mode .article-links-box {
+  border-top-color: #ffffff;
+}
+
+.article-links-title {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.article-link-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  padding: 8px 10px;
+}
+
+/* Hộp thoại Gửi & Nhận PC <-> Kindle */
+.pc-conn-badge {
+  display: inline-block;
+  border: 2px solid #000000;
+  padding: 1px 6px;
+  font-size: 12px;
+}
+
+body.invert-mode .pc-conn-badge {
+  border-color: #ffffff;
+}
+
+.pc-room-row {
+  display: table;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.pc-room-input {
+  display: table-cell;
+  width: 100%;
+}
+
+#btn-pc-save-room {
+  display: table-cell;
+  width: 168px;
+  border-left: none;
+  white-space: nowrap;
+}
+
+.pc-room-actions {
+  margin-top: 4px;
+}
+
+.pc-hint-text {
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.pc-send-input {
+  margin-bottom: 8px;
+}
+
+.pc-file-row {
+  display: table;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.pc-file-input {
+  display: table-cell;
+  width: 100%;
+  height: 44px;
+  border: 2px solid #000000;
+  background-color: #ffffff;
+  color: #000000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  padding: 8px;
+  vertical-align: middle;
+}
+
+body.invert-mode .pc-file-input {
+  border-color: #ffffff;
+  background-color: #000000;
+  color: #ffffff;
+}
+
+#btn-pc-send-file {
+  display: table-cell;
+  width: 168px;
+  border-left: none;
+  white-space: nowrap;
+}
+
+.pc-inbox-header {
+  display: table;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.pc-inbox-header .settings-label {
+  display: table-cell;
+  vertical-align: middle;
+  margin-bottom: 0;
+}
+
+.pc-inbox-actions {
+  display: table-cell;
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.pc-inbox-actions .btn-small {
+  margin-left: 4px;
+}
+
+.pc-inbox-list {
+  border-top: 2px solid #000000;
+}
+
+body.invert-mode .pc-inbox-list {
+  border-top-color: #ffffff;
+}
+
+.pc-inbox-item {
+  border-bottom: 2px solid #000000;
+  padding: 10px 2px;
+}
+
+body.invert-mode .pc-inbox-item {
+  border-bottom-color: #ffffff;
+}
+
+.pc-inbox-item:last-child {
+  border-bottom: none;
+}
+
+.pc-inbox-title {
+  font-weight: bold;
+  font-size: 15px;
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+
+.pc-inbox-meta {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.pc-inbox-item-actions .btn-small {
+  margin: 0 6px 4px 0;
 }

@@ -29,16 +29,22 @@
 - Các mốc nhanh `25p` (Pomodoro), `5p` (Nghỉ ngắn), `15p` (Nghỉ dài), `45p` (Tiết học) và nút `+5p`.
 - Chỉ cập nhật hiển thị mỗi phút một lần để bảo vệ màn hình E-Ink; khi hết giờ tự động **nháy đảo màu màn hình 3 lần** báo hiệu không tiếng ồn.
 
-### 5. Trình đọc tin tức RSS chuyên sâu cho E-Ink
-- **9 nguồn tin tích hợp sẵn** (VnExpress Tin mới/Công nghệ/Giáo dục/Kinh doanh/Thế giới, Tuổi Trẻ, Thanh Niên, Dân Trí, Hacker News) và cho phép **tự thêm/xóa nguồn RSS tùy chỉnh**.
-- **Quản lý bài đọc:** Lọc theo **Tất cả / Chưa đọc / Đã lưu (Offline)**, lọc từ khóa, đánh dấu đã đọc và phân trang danh sách tin.
-- **Chế độ Đọc báo toàn màn hình & Đọc toàn văn kiểu Kindle:** Tự động trích xuất nội dung bài viết sạch quảng cáo, hỗ trợ **lật trang kiểu sách Kindle** (`Trang trước` / `Trang sau`) hoặc cuộn liền mạch, chỉnh cỡ chữ `A-` / `A+` và **Lưu offline** để đọc lại khi tắt Wi-Fi.
+### 5. Trình đọc Web bất kỳ & Tin tức RSS chuyên sâu cho E-Ink
+- **Đọc trang web bất kỳ (E-Ink Web Reader):** Nhập hoặc dán trực tiếp bất kỳ địa chỉ URL nào ở ô **Đọc Web** để loại bỏ quảng cáo/script nặng và chuyển trang web thành giao diện đọc sách E-Ink đen–trắng, hỗ trợ lật trang, chỉnh cỡ chữ `A-` / `A+` và lưu offline.
+- **Trích xuất đa tầng & Duyệt liên kết tiếp theo:** Ưu tiên trích xuất qua `r.jina.ai`; nếu trang nguồn chặn hoặc timeout, tự động chuyển sang bộ lọc HTML dự phòng (`AllOrigins`, `CodeTabs`, hoặc `/api/extract` khi chạy LAN Server). Hiển thị danh sách liên kết con bên dưới bài viết để chạm đọc tiếp ở chế độ E-Ink và bấm **Quay lại** dễ dàng.
+- **9 nguồn tin RSS tích hợp sẵn** (VnExpress Tin mới/Công nghệ/Giáo dục/Kinh doanh/Thế giới, Tuổi Trẻ, Thanh Niên, Dân Trí, Hacker News) và cho phép **tự thêm/xóa nguồn RSS tùy chỉnh**.
+- **Quản lý bài đọc:** Lọc theo **Tất cả / Chưa đọc / Đã lưu (Offline) / Từ PC**, lọc từ khóa, đánh dấu đã đọc và phân trang danh sách tin.
+
+### 6. Gửi Link & File từ PC tới Kindle (PC ↔ Kindle Bridge)
+- **Không cần cài đặt khi dùng GitHub Pages (Cloud Relay):** Mở mục **Gửi/Nhận PC**, đặt cùng một **Mã kết nối (Room Code)** trên cả PC và Kindle Scribe (VD: `cuong-kindle`). Từ PC dán đường dẫn web, đoạn ghi chú hoặc chọn file (`.txt`, `.md`, `.html`, `.docx`, `.pdf`, `.epub`...) để gửi sang Kindle; trên Kindle tự động đồng bộ mỗi 30 giây hoặc bấm **Làm mới hộp thư** / mở tab **Từ PC**.
+- **Chế độ mạng LAN nội bộ (`server.py` / `run_server.bat`):** Khi chạy `run_server.bat` trên PC, ứng dụng tự động dùng LAN Server (`http://<IP>:8080`) để truyền file dung lượng lớn (tối đa 50 MB) và trích xuất trang web ngay trong mạng Wi-Fi nội bộ.
+- **Đọc trực tiếp file tài liệu trên E-Ink:** Các file `.txt`, `.md`, `.html`, `.docx` được trích xuất sẵn thành các đoạn văn để đọc lật trang ngay trên Kindle mà không cần tải app ngoài; các file `.pdf`, `.epub`, `.mobi` kèm nút tải file về máy.
 
 ---
 
 ## 1. Cách chạy thử trên máy tính và mạng Wi-Fi nội bộ (LAN)
 
-1. Nhấp đúp vào file `run_server.bat` trong thư mục dự án (hoặc chạy `python -m http.server 8080 --bind 0.0.0.0` trong Terminal).
+1. Nhấp đúp vào file `run_server.bat` trong thư mục dự án (sẽ khởi chạy `server.py` ở cổng `8080`, hỗ trợ cả gửi/nhận Link & File trong LAN).
 2. Trên máy tính, mở trình duyệt vào địa chỉ `http://localhost:8080`.
 3. Trên **Kindle E-Ink** (kết nối cùng mạng Wi-Fi với máy tính):
    - Mở biểu tượng menu `⋮` (góc trên bên phải) $\rightarrow$ chọn **Web Browser** (hoặc *Experimental Browser*).
@@ -51,11 +57,11 @@
 
 ## 2. Cách đưa lên GitHub Pages (Không cần bật máy tính)
 
-Vì toàn bộ ứng dụng chỉ gồm các file tĩnh (`index.html`, `styles.css`, `app.js`), bạn có thể đưa lên **GitHub Pages**, **Cloudflare Pages**, hoặc **Vercel** hoàn toàn miễn phí:
+Vì toàn bộ ứng dụng vẫn chạy thuần tĩnh (`index.html`, `styles.css`, `app.js`), bạn có thể đưa lên **GitHub Pages**, **Cloudflare Pages**, hoặc **Vercel** hoàn toàn miễn phí (tính năng **Đọc trang web bất kỳ** và **Gửi Link/File qua Mã kết nối** đều hoạt động trực tiếp trên trình duyệt):
 
 - **Link GitHub Pages trực tiếp của dự án:** https://cuongnguyendau.github.io/kindle-eink-dashboard/
 
-1. Tạo một repository công khai trên GitHub và đẩy 3 file `index.html`, `styles.css`, `app.js` lên nhánh `main`.
+1. Tạo một repository công khai trên GitHub và đẩy toàn bộ file (`index.html`, `styles.css`, `app.js`...) lên nhánh `main`.
 2. Vào **Settings $\rightarrow$ Pages**, chọn Source là **Deploy from a branch** (`main` / `/ (root)`).
 3. Mở đường dẫn `https://<ten-tai-khoan>.github.io/<ten-repo>/` trên trình duyệt của Kindle và lưu Bookmark.
 

@@ -19,13 +19,15 @@ echo.
 
 where python >nul 2>nul
 if %errorlevel%==0 (
-    python -m http.server 8080 --bind 0.0.0.0
+    python server.py 8080
+    if not %errorlevel%==0 python -m http.server 8080 --bind 0.0.0.0
     goto :eof
 )
 
 where py >nul 2>nul
 if %errorlevel%==0 (
-    py -m http.server 8080 --bind 0.0.0.0
+    py server.py 8080
+    if not %errorlevel%==0 py -m http.server 8080 --bind 0.0.0.0
     goto :eof
 )
 

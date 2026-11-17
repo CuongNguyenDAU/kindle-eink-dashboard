@@ -163,15 +163,22 @@
           </div>
         </div>
 
-        <!-- 5. Khối Trình đọc tin tức RSS cho E-Ink -->
+        <!-- 5. Khối Đọc trang web bất kỳ & Trình đọc tin tức RSS cho E-Ink -->
         <div class="card rss-card" id="rss-card">
           <div class="card-header">
-            <h2 class="card-title">TIN TỨC RSS (E-INK)</h2>
+            <h2 class="card-title">ĐỌC WEB &amp; TIN TỨC RSS (E-INK)</h2>
             <div class="header-btn-group">
+              <button type="button" class="btn btn-small" id="btn-open-pc-modal">Gửi/Nhận PC</button>
               <button type="button" class="btn btn-small" id="btn-rss-fullscreen">Mở rộng</button>
               <button type="button" class="btn btn-small" id="btn-rss-manage">Nguồn tin</button>
               <button type="button" class="btn btn-small" id="btn-rss-refresh">Tải tin</button>
             </div>
+          </div>
+
+          <!-- Đọc trang web bất kỳ -->
+          <div class="web-reader-bar">
+            <input type="text" id="web-url-input" class="input-text web-url-input" maxlength="500" placeholder="Nhập URL trang web bất kỳ để đọc E-Ink (VD: vnexpress.net/...)" aria-label="Địa chỉ trang web">
+            <button type="button" class="btn btn-small" id="btn-read-url-go">Đọc Web</button>
           </div>
 
           <!-- Chọn nguồn tin nhanh -->
@@ -183,6 +190,7 @@
               <button type="button" class="btn btn-small is-active" data-rss-filter="all" id="btn-rss-filter-all">Tất cả</button>
               <button type="button" class="btn btn-small" data-rss-filter="unread" id="btn-rss-filter-unread">Chưa đọc</button>
               <button type="button" class="btn btn-small" data-rss-filter="saved" id="btn-rss-filter-saved">Đã lưu (<span id="rss-saved-count">0</span>)</button>
+              <button type="button" class="btn btn-small" data-rss-filter="pc" id="btn-rss-filter-pc">Từ PC (<span id="rss-pc-count">0</span>)</button>
             </div>
             <button type="button" class="btn btn-small" id="btn-rss-mark-all-read">Đọc hết</button>
           </div>
@@ -213,6 +221,7 @@
       <button type="button" class="btn toolbar-btn" id="btn-rotate-screen">Xoay: 0°</button>
       <button type="button" class="btn toolbar-btn" id="btn-zen-toolbar">Toàn màn hình</button>
       <button type="button" class="btn toolbar-btn" id="btn-rss-toolbar">Đọc báo RSS</button>
+      <button type="button" class="btn toolbar-btn" id="btn-pc-toolbar">Gửi/Nhận PC</button>
       <button type="button" class="btn toolbar-btn" id="btn-font-down">A-</button>
       <button type="button" class="btn toolbar-btn" id="btn-font-up">A+</button>
       <button type="button" class="btn toolbar-btn" id="btn-toggle-layout">1 / 2 Cột</button>
@@ -313,17 +322,23 @@
     </div>
   </div>
 
-  <!-- Hộp thoại Trình đọc báo toàn văn kiểu Kindle -->
+  <!-- Hộp thoại Trình đọc báo & trang web toàn văn kiểu Kindle -->
   <div id="article-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="article-title">
     <div class="modal-box article-reader-box">
       <div class="modal-header">
-        <span id="article-source-badge" class="badge-title">RSS READER</span>
+        <span id="article-source-badge" class="badge-title">E-INK READER</span>
         <div class="header-btn-group">
           <button type="button" class="btn btn-small" id="btn-article-font-down">A-</button>
           <button type="button" class="btn btn-small" id="btn-article-font-up">A+</button>
           <button type="button" class="btn btn-small" id="btn-article-save">Lưu offline</button>
           <button type="button" class="btn btn-small" id="btn-close-article">Đóng</button>
         </div>
+      </div>
+
+      <div class="article-url-bar">
+        <button type="button" class="btn btn-small" id="btn-article-back" style="display:none;">&#9664; Quay lại</button>
+        <input type="text" id="article-url-input" class="input-text article-url-input" maxlength="500" placeholder="https://..." aria-label="Đường dẫn trang đang đọc">
+        <button type="button" class="btn btn-small" id="btn-article-url-go">Đi tới</button>
       </div>
 
       <h2 id="article-title" class="article-title">Tiêu đề bài báo</h2>
@@ -333,11 +348,14 @@
         <button type="button" class="btn btn-small" id="btn-article-fetch-full">Tải toàn văn</button>
         <button type="button" class="btn btn-small" id="btn-article-mode-toggle">Kiểu: Lật trang</button>
         <a id="article-original-link" class="btn btn-small" href="#" target="_blank" rel="noopener noreferrer">Mở link gốc</a>
+        <a id="article-download-link" class="btn btn-small" href="#" target="_blank" rel="noopener noreferrer" download style="display:none;">Tải file</a>
       </div>
 
       <div id="article-status" class="article-status">Đang chuẩn bị nội dung...</div>
 
       <div id="article-content" class="article-content"></div>
+
+      <div id="article-links-box" class="article-links-box" style="display:none;"></div>
 
       <div class="article-footer-nav">
         <div id="article-page-nav" class="article-page-nav">
@@ -349,6 +367,59 @@
           <button type="button" class="btn btn-small" id="btn-article-item-prev">&#9664; Bài trước</button>
           <button type="button" class="btn btn-small" id="btn-article-item-next">Bài tiếp &#9654;</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hộp thoại Gửi & Nhận Link / File từ PC tới Kindle -->
+  <div id="pc-sync-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="pc-sync-title">
+    <div class="modal-box modal-box-wide">
+      <div class="modal-header">
+        <h3 id="pc-sync-title">GỬI &amp; NHẬN LINK / FILE (PC ↔ KINDLE)</h3>
+        <button type="button" class="btn btn-small" id="btn-close-pc-modal">Đóng</button>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">
+          1. Kênh kết nối (<span id="pc-conn-badge" class="pc-conn-badge">Đang kiểm tra...</span>):
+        </div>
+        <div class="pc-room-row">
+          <input type="text" id="pc-room-input" class="input-text pc-room-input" maxlength="64" placeholder="Nhập Mã kết nối chung giữa PC &amp; Kindle (VD: cuong-kindle)" aria-label="Mã kết nối">
+          <button type="button" class="btn btn-small" id="btn-pc-save-room">Lưu mã &amp; Nhận ngay</button>
+        </div>
+        <div class="settings-options pc-room-actions">
+          <button type="button" class="btn btn-small" id="btn-pc-auto-poll">Tự động nhận (30s): Bật</button>
+          <span class="pc-hint-text">Nhập cùng một Mã kết nối trên cả PC và Kindle (hoặc chạy <code>run_server.bat</code> trong cùng Wi-Fi).</span>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">2. Gửi Link / Ghi chú từ PC sang Kindle:</div>
+        <input type="text" id="pc-send-url" class="input-text pc-send-input" maxlength="500" placeholder="Dán đường dẫn trang web (URL) hoặc tiêu đề bài viết..." aria-label="URL hoặc tiêu đề gửi sang Kindle">
+        <textarea id="pc-send-text" class="sync-textarea" rows="3" placeholder="(Tùy chọn) Dán nội dung văn bản hoặc ghi chú cần đọc trên Kindle..."></textarea>
+        <div class="settings-options">
+          <button type="button" class="btn btn-small" id="btn-pc-send-item">Gửi Link / Văn bản sang Kindle</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">3. Gửi File từ PC sang Kindle (.txt, .md, .html, .docx, .pdf, .epub...):</div>
+        <div class="pc-file-row">
+          <input type="file" id="pc-file-input" class="pc-file-input" accept=".txt,.md,.html,.htm,.csv,.json,.docx,.pdf,.epub,.mobi,.azw3" aria-label="Chọn file từ máy tính">
+          <button type="button" class="btn btn-small" id="btn-pc-send-file">Gửi File sang Kindle</button>
+        </div>
+        <div id="pc-sync-status" class="modal-status">Sẵn sàng kết nối PC ↔ Kindle.</div>
+      </div>
+
+      <div class="settings-group">
+        <div class="pc-inbox-header">
+          <div class="settings-label">4. Hộp thư đã nhận từ PC (<span id="pc-modal-count">0</span>):</div>
+          <div class="pc-inbox-actions">
+            <button type="button" class="btn btn-small" id="btn-pc-refresh-inbox">Làm mới hộp thư</button>
+            <button type="button" class="btn btn-small" id="btn-pc-clear-inbox">Xóa hộp thư</button>
+          </div>
+        </div>
+        <div id="pc-inbox-list" class="pc-inbox-list"></div>
       </div>
     </div>
   </div>

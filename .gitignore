@@ -1,0 +1,5 @@
+# Thư mục và dữ liệu runtime của LAN Server (PC -> Kindle)
+uploads/
+shared_inbox.json
+__pycache__/
+*.pyc
